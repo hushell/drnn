@@ -14,10 +14,10 @@ lfw_dir = [data_dir '/Color/'];
 %% These directories will be created
 
 % textures
-tex_dir = [data_dir '/parts_pf_tex/'];
+tex_dir = [data_dir '/parts_tex/'];
 
 % Pb 
-pb_dir = [data_dir '/parts_pf_pb/'];
+pb_dir = [data_dir '/parts_pb/'];
 
 %% External packages
 
