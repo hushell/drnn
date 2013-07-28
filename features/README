@@ -1,0 +1,75 @@
+% ----------------------------------------------------------------------
+% 
+% README for generating features for the following papers : 
+%
+% 1) Augmenting CRFs with Boltzmann Machine Shape Priors for Image Labeling
+% Andrew Kae, Kihyuk Sohn, Honglak Lee and Erik Learned-Miller.
+% CVPR, 2013
+%
+% project page: http://vis-www.cs.umass.edu/GLOC/ 
+% 
+% 2) Towards unconstrained face recognition
+% Gary B. Huang, Manjunath Narayana, and Erik Learned-Miller.
+% 
+% Workshop on Perceptual Organization in Computer Vision IEEE CVPR, 2008.
+% 
+% Much of this code in this release is based on earlier code by Gary Huang.
+% Modifications to earlier code done by Andrew Kae.
+%
+% In addition, parts of the feature generation code is based off sample code 
+% from the Berkeley SegBench package
+%
+% http://www.eecs.berkeley.edu/Research/Projects/CS/vision/bsds/
+% 
+% and the Superpixel code from Greg Mori's group
+%
+% http://www.cs.sfu.ca/~mori/research/superpixels/
+%
+% ----------------------------------------------------------------------
+
+This package contains code for generating the following sets of features : 
+
+Node
+- Color
+- Texture
+- Position 
+
+Edge
+- Pb (from http://www.eecs.berkeley.edu/Research/Projects/CS/vision/bsds/)
+- Color difference
+- Texture difference (textons from http://www.eecs.berkeley.edu/Research/Projects/CS/vision/bsds/)
+
+as described in the previous papers.
+
+Instructions:
+
+a. download package
+
+	- Download the package :
+	    http://vis-www.cs.umass.edu/code/gloc/features.zip
+	
+	- Also download SegBench : 
+		http://www.eecs.berkeley.edu/Research/Projects/CS/vision/bsds/
+
+		and
+		
+		the Superpixel code
+		
+		http://www.cs.sfu.ca/~mori/research/superpixels/
+
+b. edit startup_directory.m to match your system	
+	
+c. generate texture features
+
+	- run generate_textures.m
+
+d. generate Pb features
+
+	- run generate_PB.m
+
+e. generate the rest of the features
+
+	- compile generate_features.cpp (NOTE : This code requires OpenCV)
+	- run generate_features.cpp code
+
+	- (optional) edit and run drive_feats.pl.  This is just a wrapper to generate_features.cpp.  This wrapper may be easier to work with since generate_features.cpp requires many input parameters.
