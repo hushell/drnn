@@ -28,3 +28,5 @@ segbench_dir = './segbench/';
 % directory containing superpixel code
 % http://www.cs.sfu.ca/~mori/research/superpixels/
 sp_dir = './superpixels64/';
+
+spfeat_dir = [data_dir '/parts_spseg_features/'];

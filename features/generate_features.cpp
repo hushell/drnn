@@ -47,7 +47,7 @@ string pb_dir;
 // Specify subroutines
 
 // Compute Node Features
-void computeNodeFeatures(string s, int n, int **mat, int numSP, 
+void computeNodeFeatures(string s, int hh, int ww, int **mat, int numSP, 
 			 vector<vector<float> > &meanLab, vector<vector<float> > &texthists,
 			 ofstream *outfile, float **clusters);
 // Compute Edge features
@@ -57,6 +57,9 @@ void computeEdgeFeatures(string s, int n, int **mat, int numSP,
 
 // Read the labels from the ppm file
 int readppmtomat(char *fn, int **&mat);
+
+// read superpixel indices
+int readSuperpixel(char *fn, int **&mat, int hh, int ww);
 
 // Read the probability of boundary data 
 void readpb(char *fn, float **&vals);
@@ -126,7 +129,7 @@ int main(int argc, char* argv[])
 		}		
 	} else
 	{
-		cout << "Could not open LAB cluster file : " << list << endl;
+		cout << "Could not open LAB cluster file : " << lab_file << endl;
 		cout << "Recreating LAB clusters..." << endl;		
 
 		//Compute LAB clusters		
@@ -138,32 +141,44 @@ int main(int argc, char* argv[])
 			exit(-1);
 		}
 
+		int th = 0;
+		int tw = 0;
 		string s;
-		int n;
-		vector<pair<string, int> > fns;
+		vector<string> fns;
+		int nSamples = 0;
 		while(true)
 		{
-			infile >> s >> n;
+			int hh, ww;
+			infile >> s >> hh >> ww;
 			if(infile.eof())
 				break;
 
 			//store the name and id 
-			fns.push_back(pair<string, int>(s, n));
+			if (nSamples++ % 10 == 0)
+			{
+				cout << nSamples-1 << " " << s << " pushed." << endl;
+				fns.push_back(s);
+
+				th += hh;
+				tw += ww;
+			}
 		}
 		
 		//process the images
 		cout << "Processing " << fns.size() << " images." << endl;
-		CvMat *labs = cvCreateMat(fns.size()*iheight*iwidth/4, 3, CV_32FC1);
+		cout << "Need " << th << "*" << tw << " bytes." << endl;
+		//CvMat *labs = cvCreateMat(fns.size()*iheight*iwidth/4, 3, CV_32FC1);
+		CvMat *labs = cvCreateMat(th*tw, 3, CV_32FC1);
 		
 		int offset = 0;
 		for(int index=0; index<fns.size(); index++)
 		{
 			cout << index << endl;
-			s = fns[index].first;
-			n = fns[index].second;
+			s = fns[index];
 			char fn[1024];
 
-			sprintf(fn, "%s/%s/%s_%04d.jpg", lfw_dir.c_str(), s.c_str(), s.c_str(), n);
+			//sprintf(fn, "%s/%s/%s_%04d.jpg", lfw_dir.c_str(), s.c_str(), s.c_str(), n);
+			sprintf(fn, "%s/%s.png", lfw_dir.c_str(), s.c_str());
 
 			IplImage *image = cvLoadImage(fn, -1);
 			if(image == NULL)
@@ -177,9 +192,9 @@ int main(int argc, char* argv[])
 			uchar *data = (uchar*)image->imageData;
 
 			//convert RGB to LAB coordinates, sampling every other pixel.
-			for(int i=0; i<iheight; i+=2)
+			for(int i=0; i<image->height; i+=2)
 			{
-				for(int j=0; j<iwidth; j+=2)
+				for(int j=0; j<image->width; j+=2)
 				{
 					float l, a, b;
 
@@ -209,23 +224,15 @@ int main(int argc, char* argv[])
 		//vector of 3 floats initialized to 0
 		vector<int> numInC(numClusters, 0);
 		vector<float> sigmaSq(numClusters, 0);
-		int ilab = 0;
 
-		for(int index=0; index<fns.size(); index++)
+		for (int ilab = 0; ilab < labels->height; ilab++)
 		{
-			for(int i=0; i<iheight; i+=2)
+			int label = labels->data.i[ilab];
+			for (int ii = 0; ii < 3; ii++)
 			{
-				for(int j=0; j<iwidth; j+=2)
-				{
-					int label = labels->data.i[ilab];
-
-					for(int ii=0; ii<3; ii++)
-						clusters[label][ii] += labs->data.fl[ilab*3+ii];
-
-					++numInC[label];
-					++ilab;
-				}
+				clusters[label][ii] += labs->data.fl[ilab*3+ii];
 			}
+			++numInC[label];
 		}
 
 		for(int i=0; i<numClusters; i++)
@@ -250,67 +257,43 @@ int main(int argc, char* argv[])
 	//Compute features		
 	cout << "Computing Features..." << endl;	
 
+	//create the directory if it doesn't already exist
+	char spseg_dir[1024];
+	struct stat st;
+
+	sprintf(spseg_dir, "%s", spseg_features_dir.c_str());     
+
+	if(stat(spseg_dir,&st) != 0) {
+		//create it
+		mkdir(spseg_dir, S_IRWXU);
+	} 
+
 	//read list
 	ifstream infile(list.c_str());
 
-	//mat is a 2D array of superpixel label ids.  Each pixel is assigned the label of the superpixel.
-	int **mat;
-	mat = new int*[iheight];
-	for(int i=0; i<iheight; i++)
-		mat[i] = new int[iwidth];
-
+	int nImages = 0;
 	while(true)
 	{
 		string s;
-		int n;
-		infile >> s >> n;
+		int hh, ww;
+		infile >> s >> hh >> ww;
+		cout << nImages++ << " " << s << endl;
 		if(infile.eof())
 			break;
 
+		//mat is a 2D array of superpixel label ids.  Each pixel is assigned the label of the superpixel.
+		int **mat;
+		mat = new int*[hh];
+		for(int i=0; i<hh; i++)
+			mat[i] = new int[ww];
+
 		char fn[1024];
-		sprintf(fn, "%s/%s/%s_%04d.ppm", sp_dir.c_str(), s.c_str(), s.c_str(), n);
+		sprintf(fn, "%s/%s_seg.dat", sp_dir.c_str(), s.c_str());
 
-		int numSP = readppmtomat(fn, mat);
+		//int numSP = readppmtomat(fn, mat);
+		int numSP = readSuperpixel(fn, mat, hh, ww);
 
-		//write out the mat into a different format
-		char fn_dir[1024];      
-		struct stat st;
-
-		sprintf(fn_dir, "%s/%s/", spmat_dir.c_str(), s.c_str());     
-		if(stat(fn_dir,&st) != 0) {
-			//create directory
-			mkdir(fn_dir, S_IRWXU);
-		} 
-
-		sprintf(fn, "%s/%s/%s_%04d.dat", spmat_dir.c_str(), s.c_str(), s.c_str(), n);     
-		ofstream spmatfile(fn);
-
-		cout << "File: " << fn << endl;
-
-		if(!spmatfile.is_open())
-		{
-			cout << "could not create " << fn << endl;
-			exit(-1);
-		}
-
-		for(int i=0; i<iheight; i++) {
-			for(int j=0; j<iwidth; j++) {
-				spmatfile << mat[i][j] << " ";
-			}
-			spmatfile << endl;
-		}
-
-		spmatfile.close();
-
-		//create the directory if it doesn't already exist
-		sprintf(fn_dir, "%s/%s/", spseg_features_dir.c_str(), s.c_str());     
-
-		if(stat(fn_dir,&st) != 0) {
-			//create it
-			mkdir(fn_dir, S_IRWXU);
-		} 
-
-		sprintf(fn, "%s/%s/%s_%04d.dat", spseg_features_dir.c_str(), s.c_str(), s.c_str(), n);     
+		sprintf(fn, "%s/%s_spfeat.dat", spseg_features_dir.c_str(), s.c_str());     
 		ofstream outfile(fn);
 		if(!outfile.is_open())
 		{
@@ -325,14 +308,15 @@ int main(int argc, char* argv[])
 		//texture histogram of each superpixel
 		vector<vector<float> > texthists;
 		
-		computeNodeFeatures(s, n, mat, numSP, meanLab, texthists, &outfile, clusters);
-		computeEdgeFeatures(s, n, mat, numSP, meanLab, texthists, &outfile);
-		computeGTppm(s, n, mat, numSP);
+		computeNodeFeatures(s, hh, ww, mat, numSP, meanLab, texthists, &outfile, clusters);
+		//computeEdgeFeatures(s, n, mat, numSP, meanLab, texthists, &outfile);
+		//computeGTppm(s, n, mat, numSP);
+
+		for(int i=0; i<hh; i++)
+			delete[] mat[i];
+		delete[] mat;
 	}
 
-	for(int i=0; i<iheight; i++)
-		delete[] mat[i];
-	delete[] mat;
 	for(int i=0; i<numClusters; i++)
 		delete[] clusters[i];
 	delete[] clusters;
@@ -350,22 +334,23 @@ int main(int argc, char* argv[])
    % s,n : specify filename
    % mat : 2D matrix superpixel IDs
    % numSP : number of superpixels
-   % meanLab : mean color of each superpixel
-   % texthists : texture histogram of each superpixel
+   % meanLab : mean color of each superpixel -> input of edge feat
+   % texthists : texture histogram of each superpixel -> input of edge feat
    % outfile : 	feature file 
    % clusters : cluster centroids (64) 
 */
-void computeNodeFeatures(string s, int n, int **mat, int numSP, 
+void computeNodeFeatures(string s, int hh, int ww, 
+		     int **mat, int numSP, 
 			 vector<vector<float> > &meanLab, 
 			 vector<vector<float> > &texthists,
 			 ofstream *outfile, float **clusters)
 {
-  int posFOffset = numClusters;
-  int numGridFeatures = 64;
-  int texFOffset = numClusters + 64;
+  //int posFOffset = numClusters;
+  //int numGridFeatures = 64;
+  int texFOffset = numClusters;
   
-  int numFeatures = texFOffset + numTextClusters;
   //int numFeatures = numClusters + numGridFeatures;
+  int numFeatures = numClusters + numTextClusters;
 
   vector<float> instanceNFR(numFeatures, 0);
   vector<vector<float> > instanceNF(numSP, instanceNFR);
@@ -380,7 +365,7 @@ void computeNodeFeatures(string s, int n, int **mat, int numSP,
   char fn[1024];
   
   //Funneled LFW images
-  sprintf(fn, "%s/%s/%s_%04d.jpg", lfw_dir.c_str(), s.c_str(), s.c_str(), n);
+  sprintf(fn, "%s/%s.png", lfw_dir.c_str(), s.c_str());
 
   IplImage *image = cvLoadImage(fn, -1);
   if(image == NULL)
@@ -396,7 +381,7 @@ void computeNodeFeatures(string s, int n, int **mat, int numSP,
     minLabb = 100, maxLabb = -100;
 
   //look for textons
-  sprintf(fn, "%s/%s/%s_%04d.dat", texton_dir.c_str(), s.c_str(), s.c_str(), n);
+  sprintf(fn, "%s/%s_tex.dat", texton_dir.c_str(), s.c_str());
   ifstream texin(fn);
   if(!texin.is_open())
     {
@@ -404,30 +389,30 @@ void computeNodeFeatures(string s, int n, int **mat, int numSP,
       exit(-1);
     } 
   
-  for(int i=0; i<iheight; i++)
+  for(int i=0; i<hh; i++)
     {
-      for(int j=0; j<iwidth; j++)
+      for(int j=0; j<ww; j++)
 	{
 	  int sp = mat[i][j];
 	  ++numInSP[sp];
 
-	  //NOTE: 250/8 = 31.25 ie an 8x8 grid
-	  
-	  /*Spatial/Position Feature*/
-	  //get a bin between 1-8
-	  int y = (int)(i / 31.25);
-	  int x = (int)(j / 31.25);
-	  
-	  //put the "vote" into the appropriate bin -- normalize later
-	  ++instanceNF[sp][posFOffset+(y<<3)+x];
+	  ////NOTE: 250/8 = 31.25 ie an 8x8 grid
+	  ///*Spatial/Position Feature*/
+	  ////get a bin between 1-8
+	  //int y = (int)(i / 31.25);
+	  //int x = (int)(j / 31.25);
+	  //
+	  ////put the "vote" into the appropriate bin -- normalize later
+	  //++instanceNF[sp][posFOffset+(y<<3)+x];
 
-	  /*Texton Feature */
+	  /* Texton Feature */
 	  int texcluster;
 	  texin >> texcluster;
 	  --texcluster;
 	  ++instanceNF[sp][texFOffset + texcluster];
 	  ++texthists[sp][texcluster];	 
 	  
+	  /* Color Feature */
 	  int r = data[i*step + j*3 + 2];
 	  int g = data[i*step + j*3 + 1];
 	  int b = data[i*step + j*3 + 0];
@@ -618,6 +603,44 @@ int readppmtomat(char *fn, int **&mat)
 	      mat[i][j] = ppm2mat[x];
 	    }
 	}
+    }
+  return ppm2mat.size();
+}
+
+int readSuperpixel(char *fn, int **&mat, int hh, int ww)
+{
+  map<int, int> ppm2mat;
+  ifstream infile(fn);
+  if(!infile.is_open())
+    {
+      cout << "could not open " << fn << endl;
+	  return -1;
+    }
+  int n, m, x;
+  infile >> m >> n;
+
+  if (m != hh || n != ww)
+  {
+	cout << "size mismatched!" << endl;
+	return -1;
+  }
+
+  for(int i=0; i<m; i++)
+    {
+      for(int j=0; j<n; j++)
+	  {
+	      infile >> x;
+	      if(ppm2mat.find(x) == ppm2mat.end())
+	        {
+	          int s = ppm2mat.size();
+	          ppm2mat[x] = s;
+	          mat[i][j] = ppm2mat[x];
+	        }
+	      else
+	        {
+	          mat[i][j] = ppm2mat[x];
+	        }
+	  }
     }
   return ppm2mat.size();
 }
