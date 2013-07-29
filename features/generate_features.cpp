@@ -20,6 +20,7 @@ Originally written by Gary Huang.  Modified by Andrew Kae
 #include <algorithm>
 #include <math.h>
 #include <sys/stat.h>
+#include <cassert>
 
 using namespace std;
 
@@ -60,6 +61,9 @@ int readppmtomat(char *fn, int **&mat);
 
 // read superpixel indices
 int readSuperpixel(char *fn, int **&mat, int hh, int ww);
+
+// write superpixel indices
+void writeSuperpixel(char *fn, int **mat, int hh, int ww, int numSP);
 
 // Read the probability of boundary data 
 void readpb(char *fn, float **&vals);
@@ -290,9 +294,15 @@ int main(int argc, char* argv[])
 		char fn[1024];
 		sprintf(fn, "%s/%s_seg.dat", sp_dir.c_str(), s.c_str());
 
+		//cout << "DEBUG 1\n";
 		//int numSP = readppmtomat(fn, mat);
 		int numSP = readSuperpixel(fn, mat, hh, ww);
 
+		char fnw[1024];
+		sprintf(fnw, "%s/%s_sortseg.dat", sp_dir.c_str(), s.c_str());
+		writeSuperpixel(fnw, mat, hh, ww, numSP);
+
+		//cout << "DEBUG 2\n";
 		sprintf(fn, "%s/%s_spfeat.dat", spseg_features_dir.c_str(), s.c_str());     
 		ofstream outfile(fn);
 		if(!outfile.is_open())
@@ -308,10 +318,12 @@ int main(int argc, char* argv[])
 		//texture histogram of each superpixel
 		vector<vector<float> > texthists;
 		
+		//cout << "DEBUG 3\n";
 		computeNodeFeatures(s, hh, ww, mat, numSP, meanLab, texthists, &outfile, clusters);
 		//computeEdgeFeatures(s, n, mat, numSP, meanLab, texthists, &outfile);
 		//computeGTppm(s, n, mat, numSP);
 
+		//cout << "DEBUG 4\n";
 		for(int i=0; i<hh; i++)
 			delete[] mat[i];
 		delete[] mat;
@@ -616,8 +628,8 @@ int readSuperpixel(char *fn, int **&mat, int hh, int ww)
       cout << "could not open " << fn << endl;
 	  return -1;
     }
-  int n, m, x;
-  infile >> m >> n;
+  int n, m, x, numSP;
+  infile >> m >> n >> numSP;
 
   if (m != hh || n != ww)
   {
@@ -640,9 +652,33 @@ int readSuperpixel(char *fn, int **&mat, int hh, int ww)
 	        {
 	          mat[i][j] = ppm2mat[x];
 	        }
+	      //mat[i][j] = x;
 	  }
     }
+  assert(numSP == ppm2mat.size());
   return ppm2mat.size();
+}
+
+void writeSuperpixel(char *fn, int **mat, int hh, int ww, int numSP)
+{
+  ofstream outfile(fn);
+  if(!outfile.is_open())
+    {
+      cout << "could not open " << fn << endl;
+	  return;
+    }
+
+  outfile << hh << " " <<  ww << " " << numSP << endl;
+
+  for(int i=0; i<hh; i++)
+    {
+      for(int j=0; j<ww; j++)
+	  {
+	      outfile << mat[i][j] << " ";
+	  }
+	  outfile << endl;
+    }
+
 }
 
 /* 
