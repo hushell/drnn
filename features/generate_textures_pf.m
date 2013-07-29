@@ -12,12 +12,13 @@ texton_file = 'textons_pf.mat';
 
 % Create filterbank
 fb = fbCreate(6,1,3,sqrt(2));
+visualizeFB(fb);
 
 % Number of Textons
 ntex = 64;
 
 % files
-rt_path = '/scratch/working/datasets/pedestrian_parsing/Color/';
+rt_path = 'data_penn_fudan/Color/';
 files = dir(rt_path);
 images = cell(length(files)-2,1);
 for j = 3:length(files)
