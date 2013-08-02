@@ -88,7 +88,7 @@ options.display = 'on';
 
 num_in = size(tr_feat,1);
 num_out = nlabel;
-lrl2reg = 0.01;
+lrl2reg = 0.001;
 
 W = 0.1*randn(num_in,num_out);
 theta = W(:);
@@ -97,7 +97,7 @@ theta = W(:);
 [opttheta, ~] = minFunc( @(p) cost_lr(p,tr_feat,tr_label,num_in,num_out,lrl2reg), theta, options);
 
 w_lr.nodeWeights = reshape(opttheta,num_in,num_out);
-fname_lr = 'lr_RNN_norm_feat';
+fname_lr = 'lr_without_whiten_feat';
 save(sprintf('%s/%s.mat',fsave_dir,fname_lr),'w_lr');
 
 % visualize weights, left 8 col for color, right 8 col for texture

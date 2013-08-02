@@ -32,7 +32,7 @@ if segCatsOrTree==1
 % saveTo = [visuFolder 'imgLabels' num2str(num)];
 % colorImgWithLabels(imgData.segs2,imgData.img,imgTreeTop.nodeCat,colmap,saveTo);
 colorImgWithLabels(imgData.segs2,imgData.labels,imgTreeTop.nodeCat,...
-    imgData.img,imgData.segs2);
+    imgData.segLabels, imgData.img);
     
     
 elseif segCatsOrTree==2
