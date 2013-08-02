@@ -49,18 +49,22 @@ elseif segCatsOrTree==2
         leafsUnder{n} = [leafsUnder{kids(1)} leafsUnder{kids(2)}];
     end
     
-    
+    %clear visuFolder;
     
     for hasLeafs = 2:numTotalNodes
         segList = find(numLeafsUnder==hasLeafs);
         if ~isempty(segList)
-            if exist('visuFolder','var')
+            %if exist('visuFolder','var')
+            if ~isempty(visuFolder)
                 saveTo = [visuFolder 'img' num2str(num) '_superSegs' num2str(hasLeafs)];
-                [~,~] = visualizeSegments(imgData.segs2,imgData.img, leafsUnder(segList),imgTreeTop.nodeLabels(:,segList),saveTo);
+                %[~,~] = visualizeSegments(imgData.segs2,imgData.img, leafsUnder(segList),imgTreeTop.nodeLabels(:,segList),saveTo);
+                [~,~] = visualizeSegments(imgData.segs2,imgData.img, leafsUnder(segList),[],saveTo);
             else
-                [~,~] = visualizeSegments(imgData.segs2,imgData.img, leafsUnder(segList),imgTreeTop.nodeLabels(:,segList));
+                [~,~] = visualizeSegments(imgData.segs2,imgData.img, leafsUnder(segList),[]);
             end
         end
+        %pause(1);
+        pause;
     end
     
 end
