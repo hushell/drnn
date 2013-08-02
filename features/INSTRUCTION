@@ -1,0 +1,19 @@
+a. Prepare dataset and 3rd party softwares
+
+b. run startup_penn_fudan.m  
+	
+c. generate texture features (64 texton features for node, + 64 LAB color features = 128 dim features)
+
+	- run generate_textures_pf.m
+
+d. generate Pb features (for edge features)
+
+	- run generate_PB.m
+
+e. generate the rest of the features
+
+	- compile generate_features.cpp (NOTE : This code requires OpenCV)
+		g++ generate_features.cpp -o generate_features `pkg-config --libs -cflags opencv` -g
+	- run drive_feats.pl.  This is just a wrapper to generate_features.cpp.  This wrapper may be easier to work with since generate_features.cpp requires many input parameters.
+
+f. go to ../gloc, use getFeatures.m to get features for other programs or run demos for lfw

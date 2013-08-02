@@ -4,7 +4,9 @@ generate_features.cpp
 
 Code to generate color/texture features.
 
-Originally written by Gary Huang.  Modified by Andrew Kae
+Originally written by Gary Huang.  Modified by Andrew Kae.
+
+Modified by Shell Hu Aug 1 2013
 
 */
 
@@ -298,6 +300,7 @@ int main(int argc, char* argv[])
 		//int numSP = readppmtomat(fn, mat);
 		int numSP = readSuperpixel(fn, mat, hh, ww);
 
+		// superpixels labeled by SLIC may not be sequential
 		char fnw[1024];
 		sprintf(fnw, "%s/%s_sortseg.dat", sp_dir.c_str(), s.c_str());
 		writeSuperpixel(fnw, mat, hh, ww, numSP);
