@@ -13,7 +13,7 @@ d. generate Pb features (for edge features)
 e. generate the rest of the features
 
 	- compile generate_features.cpp (NOTE : This code requires OpenCV)
-		g++ generate_features.cpp -o generate_features `pkg-config --libs -cflags opencv` -g
+		g++ generate_features.cpp -o generate_features `pkg-config --libs --cflags opencv` -g
 	- run drive_feats.pl.  This is just a wrapper to generate_features.cpp.  This wrapper may be easier to work with since generate_features.cpp requires many input parameters.
 
-f. go to ../gloc, use getFeatures.m to get features for other programs or run demos for lfw
+f. run saveNodeFeatures2mat.m 

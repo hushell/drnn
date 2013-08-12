@@ -4,7 +4,7 @@
 % arguments (name, id, feature_directory)
 
 function [numNodes H] = readNodeFeatures(ns, features_dir)
-ffn = sprintf('%s/%s_spfeat.dat', features_dir, ns);
+ffn = sprintf('%s/%s_spfn1.dat', features_dir, ns);
 fidf = fopen(ffn);
 
 numNodes = fscanf(fidf, '%d', 1);

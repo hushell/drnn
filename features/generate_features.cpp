@@ -52,7 +52,7 @@ string pb_dir;
 // Compute Node Features
 void computeNodeFeatures(string s, int hh, int ww, int **mat, int numSP, 
 			 vector<vector<float> > &meanLab, vector<vector<float> > &texthists,
-			 ofstream *outfile, float **clusters);
+			 ofstream *outfile, float **clusters, int neiMode);
 // Compute Edge features
 void computeEdgeFeatures(string s, int n, int **mat, int numSP, 
 			 vector<vector<float> > &meanLab, vector<vector<float> > &texthists,
@@ -107,14 +107,14 @@ int main(int argc, char* argv[])
 	string list = argv[1];		
 	string lab_file = argv[2];
 
-	lfw_dir = argv[3];
-	sp_dir = argv[4];
-	spseg_features_dir = argv[5];
-	label_dir = argv[6];
+	lfw_dir = argv[3]; // image dir
+	sp_dir = argv[4]; // superpixel map dir
+	spseg_features_dir = argv[5]; // output dir for sp features
+	label_dir = argv[6]; // GT image dir (pixel level)
 	gt_dir = argv[7];
 	spmat_dir = argv[8];
-	texton_dir = argv[9];
-	pb_dir = argv[10];		
+	texton_dir = argv[9]; // texton dir
+	pb_dir = argv[10]; // gPb features dir (for edge)
 
 	//check if LAB clusters exist already.  If they exist, load them.  If they don't then create it.
 	float **clusters = new float*[numClusters];	
@@ -123,6 +123,7 @@ int main(int argc, char* argv[])
 		clusters[i] = new float[3];
 	}
 			
+	//*** LAB color features
 	ifstream kmin(lab_file.c_str());
 	if(kmin.is_open()) 
 	{
@@ -277,6 +278,7 @@ int main(int argc, char* argv[])
 	//read list
 	ifstream infile(list.c_str());
 
+	//*** process each image
 	int nImages = 0;
 	while(true)
 	{
@@ -306,7 +308,8 @@ int main(int argc, char* argv[])
 		writeSuperpixel(fnw, mat, hh, ww, numSP);
 
 		//cout << "DEBUG 2\n";
-		sprintf(fn, "%s/%s_spfeat.dat", spseg_features_dir.c_str(), s.c_str());     
+		//sprintf(fn, "%s/%s_spfeat.dat", spseg_features_dir.c_str(), s.c_str());     
+		sprintf(fn, "%s/%s_spfn1.dat", spseg_features_dir.c_str(), s.c_str());     
 		ofstream outfile(fn);
 		if(!outfile.is_open())
 		{
@@ -322,7 +325,7 @@ int main(int argc, char* argv[])
 		vector<vector<float> > texthists;
 		
 		//cout << "DEBUG 3\n";
-		computeNodeFeatures(s, hh, ww, mat, numSP, meanLab, texthists, &outfile, clusters);
+		computeNodeFeatures(s, hh, ww, mat, numSP, meanLab, texthists, &outfile, clusters, 1);
 		//computeEdgeFeatures(s, n, mat, numSP, meanLab, texthists, &outfile);
 		//computeGTppm(s, n, mat, numSP);
 
@@ -358,7 +361,8 @@ void computeNodeFeatures(string s, int hh, int ww,
 		     int **mat, int numSP, 
 			 vector<vector<float> > &meanLab, 
 			 vector<vector<float> > &texthists,
-			 ofstream *outfile, float **clusters)
+			 ofstream *outfile, float **clusters,
+			 int neiMode)
 {
   //int posFOffset = numClusters;
   //int numGridFeatures = 64;
@@ -403,6 +407,40 @@ void computeNodeFeatures(string s, int hh, int ww,
       cout << "could not open " << fn << endl;
       exit(-1);
     } 
+
+  // find neighborhoods
+  vector<int> numInSPNeigh(numSP, 0);
+  vector< vector<int> > neigh(numSP, vector<int>(numSP, 0));
+  if (neiMode > 0)
+  {
+  	for (int i = 0; i < hh; i++)
+  	{
+  	    for (int j = 0; j < ww; j++)
+  	    {
+  	  	  if (i > 0)
+  	  	  {
+  	  		  int xij = mat[i][j];
+  	  		  int xij1 = mat[i-1][j];
+  	  		  if (xij != xij1)
+  	  		  {
+  	  			  neigh[xij][xij1]++;
+  	  			  neigh[xij1][xij]++;
+  	  		  }
+  	  	  }
+
+  	  	  if (j > 0)
+  	  	  {
+  	  		  int xij = mat[i][j];
+  	  		  int xij1 = mat[i][j-1];
+  	  		  if (xij != xij1)
+  	  		  {
+  	  			  neigh[xij][xij1]++;
+  	  			  neigh[xij1][xij]++;
+  	  		  }
+  	  	  }
+  	    }
+  	}
+  }
   
   for(int i=0; i<hh; i++)
     {
@@ -426,6 +464,21 @@ void computeNodeFeatures(string s, int hh, int ww,
 	  --texcluster;
 	  ++instanceNF[sp][texFOffset + texcluster];
 	  ++texthists[sp][texcluster];	 
+
+	  // counting for neighboring SPs
+	  if (neiMode > 0)
+	  {
+	    ++numInSPNeigh[sp];
+	  	for (int ni = 0; ni < numSP; ni++)
+	  	{
+	  	    if (neigh[sp][ni] > 0)
+	  	    {
+	  			  ++numInSPNeigh[ni];
+	  			  ++instanceNF[ni][texFOffset + texcluster];
+				  ++texthists[ni][texcluster];	 
+	  	    }
+	  	}
+	  }
 	  
 	  /* Color Feature */
 	  int r = data[i*step + j*3 + 2];
@@ -455,16 +508,48 @@ void computeNodeFeatures(string s, int hh, int ww,
 	}
     }
 
+  // DEBUG code
+  vector<int> numInSPCompare(numInSP);
+  for (int ni = 0; ni < numSP; ni++)
+  {
+	  for (int mi = 0; mi < numSP; mi++)
+	  {
+		  if (neigh[ni][mi] > 0)
+			numInSPCompare[ni] += numInSP[mi]; 
+	  }
+	  assert(numInSPCompare[ni] == numInSPNeigh[ni]);
+	  //cout<< numInSPCompare[ni] << " " << numInSPNeigh[ni] << endl;
+  }
+
   	(*outfile) << numFeatures+1 << endl; // constant features
 
 	for(int i=0; i<numSP; i++)
 	{
 		(*outfile) << 1 << '\t'; // constant feature
 
-		for(int j=0; j<numFeatures; j++)
+		// normalize color part
+		for(int j=0; j<texFOffset; j++)
 		{
 			instanceNF[i][j] /= numInSP[i];
 			(*outfile) << instanceNF[i][j] << '\t';
+		}
+
+		// normalize texture part
+		if (neiMode > 0)
+		{
+			for(int j=texFOffset; j<numFeatures; j++)
+			{
+				instanceNF[i][j] /= numInSPNeigh[i];
+				(*outfile) << instanceNF[i][j] << '\t';
+			}
+		}
+		else
+		{
+			for(int j=texFOffset; j<numFeatures; j++)
+			{
+				instanceNF[i][j] /= numInSP[i];
+				(*outfile) << instanceNF[i][j] << '\t';
+			}
 		}
 		(*outfile) << endl;
 
@@ -529,7 +614,7 @@ void computeEdgeFeatures(string s, int n, int **mat, int numSP,
 	      pair<int, int> p(min(mat[i][j], mat[i+1][j]), max(mat[i][j], mat[i+1][j]));
 	      if(foundEdges.find(p) == foundEdges.end())
 		{
-		  foundEdges[p] = instanceEdges.size();
+		  foundEdges[p] = instanceEdges.size(); // give an id to this edge (sp1, sp2) 
 		  instanceEdges.push_back(p);
 		  edgeFeatures.push_back(val);
 		  bT.push_back(1);

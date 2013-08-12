@@ -12,7 +12,7 @@ tinyDatasetDebug = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%
 % data set: stanford background data set from Gould et al.
-mainDataSet = 'penn-fudan-all';
+mainDataSet = 'penn-fudan-all-n1';
 setDataFolders
 
 %%%%%%%%%%%%%%%%%%%%%%%
@@ -110,4 +110,4 @@ save(fullTrainParamName,'Wbot','W','Wout','Wcat','params','options')
 %testVRNN
 
 % visualize trees
-visualizeImageTrees
+%visualizeImageTrees

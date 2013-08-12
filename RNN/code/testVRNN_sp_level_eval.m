@@ -30,10 +30,10 @@ nlabel = 7;
 
 fprintf('processing the features!!\n');
 
-dataFolder = '/home/hushell/working/deep/RNN/codeAndDataSocherICML2011/data/penn-fudan-all/';
+dataFolder = '/home/hushell/working/deep/RNN/codeAndDataSocherICML2011/data/penn-fudan-all-n1/';
 dataFolder = [dataFolder 'allInMatlab/'];
 
-testList = trainList;
+testList = trainList; % recompute training data or testing data
 force = 0;
 whiten = 1;
 recompute = 0;
@@ -48,65 +48,65 @@ if (~exist('allData','var') || force)
         else
             load('../data/penn-fudan-allData-eval.mat');
         end
-    end
-    
-    allData{length(testList)} = {};
-    for i = 1:length(testList)
-        allData{i} = load([dataFolder testList{i}(1:end-4) '.mat']);
-    end
-    
-    if whiten == 1
-        % 'whiten' inputs (each feature separately) to mean 0
-        if (~exist('meanAll','var'))
-            allFeats = [];
-            for i = 1:length(allData)
-                allFeats = [allFeats ; allData{i}.feat2];
-            end
-            meanAll = mean(allFeats) + 1e-5;
-            stdAll  = std(allFeats) + 1e-5;
-        else
-            neighNameTrain = [neighNameStem '_train.mat'];
-            %neighNameTrain = [neighNameStem '_train_tiny.mat'];
-            load(neighNameTrain ,'meanAll','stdAll');
+    else
+        allData{length(testList)} = {};
+        for i = 1:length(testList)
+            allData{i} = load([dataFolder testList{i}(1:end-4) '.mat']);
         end
 
-        % normalize features
-        for i = 1:length(allData)
-            featsNow = allData{i}.feat2;
-            featsNow = bsxfun(@minus, featsNow, meanAll);
-            % Truncate to +/-3 standard deviations and scale to -1 to 1
-            pstd = 3 * stdAll;
-            featsNow = bsxfun(@max,bsxfun(@min,featsNow,pstd),-pstd);
-            featsNow = bsxfun(@times,featsNow,1./pstd);
-            if strcmp(params.actFunc,'sigmoid')
-                % Rescale from [-1,1] to [0.1,0.9]
-                featsNow = (featsNow + 1) * 0.4 + 0.1;
+        if whiten == 1
+            % 'whiten' inputs (each feature separately) to mean 0
+            if (~exist('meanAll','var'))
+                allFeats = [];
+                for i = 1:length(allData)
+                    allFeats = [allFeats ; allData{i}.feat2];
+                end
+                meanAll = mean(allFeats) + 1e-5;
+                stdAll  = std(allFeats) + 1e-5;
+            else
+                neighNameTrain = [neighNameStem '_train.mat'];
+                %neighNameTrain = [neighNameStem '_train_tiny.mat'];
+                load(neighNameTrain ,'meanAll','stdAll');
             end
-            allData{i}.feat2 = featsNow;
+
+            % normalize features
+            for i = 1:length(allData)
+                featsNow = allData{i}.feat2;
+                featsNow = bsxfun(@minus, featsNow, meanAll);
+                % Truncate to +/-3 standard deviations and scale to -1 to 1
+                pstd = 3 * stdAll;
+                featsNow = bsxfun(@max,bsxfun(@min,featsNow,pstd),-pstd);
+                featsNow = bsxfun(@times,featsNow,1./pstd);
+                if strcmp(params.actFunc,'sigmoid')
+                    % Rescale from [-1,1] to [0.1,0.9]
+                    featsNow = (featsNow + 1) * 0.4 + 0.1;
+                end
+                allData{i}.feat2 = featsNow;
+            end
         end
-    end
-    
-    for i = 1:length(allData)
-        labelRegs = allData{i}.labels;
-        segs = allData{i}.segs2;
-        numSegs = max(segs(:));
-        segLabels = zeros(numSegs,1);
-        for r = 1:numSegs
-            segLabels(r) = mode(labelRegs(segs==r));
+
+        for i = 1:length(allData)
+            labelRegs = allData{i}.labels;
+            segs = allData{i}.segs2;
+            numSegs = max(segs(:));
+            segLabels = zeros(numSegs,1);
+            for r = 1:numSegs
+                segLabels(r) = mode(labelRegs(segs==r));
+            end
+            allData{i}.segLabels = segLabels;
+
+            % find neighbors!
+            adjHigher = getAdjacentSegments(segs);%getAdjacentSegments(segs,1)
+            adj = adjHigher|adjHigher';
+            allData{i}.adj = adj;
+
+            clear segLabels labelRegs segs numSegs;
         end
-        allData{i}.segLabels = segLabels;
-        
-        % find neighbors!
-        adjHigher = getAdjacentSegments(segs);%getAdjacentSegments(segs,1)
-        adj = adjHigher|adjHigher';
-        allData{i}.adj = adj;
-        
-        clear segLabels labelRegs segs numSegs;
     end
 end
 
 if (~exist('Wcat','var'))
-    load ../output/penn-fudan-all_fullParams_hid50_PTC0.0001_fullC0.0001_L0.05.mat
+    load ../output/penn-fudan-all-n1_fullParams_hid50_PTC0.0001_fullC0.0001_L0.05.mat
 end
 
 verbose = 1;
