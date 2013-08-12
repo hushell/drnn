@@ -65,6 +65,14 @@ if subtree < 0
     if hLimit > numTotalNodes
         hLimit = numTotalNodes;
     end
+    
+    if hLimit > 100 + numLeafNodes
+        zLimit = hLimit-numLeafNodes;
+        uz = 1;
+    else
+        zLimit = 100;
+        uz = zLimit / (hLimit-numLeafNodes);
+    end
 
     [sx,sy]=vl_grad(double(segs), 'type', 'forward') ;
     s = find(sx | sy) ;
@@ -79,7 +87,7 @@ if subtree < 0
     %colormap(gray)
     view(-35,17)
     xlabel('x'); ylabel('y'); zlabel('z');
-    axis([0 ys 0 xs 0 hLimit-numLeafNodes])
+    axis([0 ys 0 xs 0 zLimit])
     axis equal
     %axis image
     hold on;
@@ -87,9 +95,9 @@ if subtree < 0
     for node = numLeafNodes+1:hLimit
         kid1 = orderedKids(node,1);
         kid2 = orderedKids(node,2);
-        point = [Cent(node,:), nodeHeight(node)];
-        point1 = [Cent(kid1,:), nodeHeight(kid1)];
-        point2 = [Cent(kid2,:), nodeHeight(kid2)];
+        point = [Cent(node,:), nodeHeight(node)*uz];
+        point1 = [Cent(kid1,:), nodeHeight(kid1)*uz];
+        point2 = [Cent(kid2,:), nodeHeight(kid2)*uz];
         line3d(point, point1, '-b', 1, 'r'); hold on;
         line3d(point, point2, '-b', 1, 'r'); hold on;
     end
@@ -124,6 +132,14 @@ else
         s(segs == node) = s(segs == node)/3 + 100*col(3);
         scratch(:,:,3) = s;
     end
+    
+    if nodeHeight(subtree) > 100
+        zLimit = nodeHeight(subtree);
+        uz = 1;
+    else
+        zLimit = 100;
+        uz = zLimit / nodeHeight(subtree);
+    end
     figure;
     surface(zeros(xs,ys),flipdim(scratch,1),...
        'FaceColor','texturemap',...
@@ -132,29 +148,29 @@ else
     %colormap(gray)
     view(-35,17)
     xlabel('x'); ylabel('y'); zlabel('z');
-    axis([0 ys 0 xs 0 nodeHeight(subtree)])
+    axis([0 ys 0 xs 0 zLimit])
     axis equal
     %axis image
     hold on;
     
     % visualize subtree
     node = subtree;
-    lineKids(node, nodeHeight, Cent, orderedKids);
+    lineKids(node, nodeHeight, Cent, orderedKids, uz);
     hold off
 end
 
-function lineKids(node, nodeHeight, Cent, orderedKids)
+function lineKids(node, nodeHeight, Cent, orderedKids, uz)
 % recursion
     if nodeHeight(node) <= 0
         return;
     end
     kid1 = orderedKids(node,1);
     kid2 = orderedKids(node,2);
-    point = [Cent(node,:), nodeHeight(node)];
-    point1 = [Cent(kid1,:), nodeHeight(kid1)];
-    point2 = [Cent(kid2,:), nodeHeight(kid2)];
+    point = [Cent(node,:), nodeHeight(node)*uz];
+    point1 = [Cent(kid1,:), nodeHeight(kid1)*uz];
+    point2 = [Cent(kid2,:), nodeHeight(kid2)*uz];
     line3d(point, point1, '-b', 1, 'r'); hold on;
     line3d(point, point2, '-b', 1, 'r'); hold on;
-    lineKids(kid1, nodeHeight, Cent, orderedKids);
-    lineKids(kid2, nodeHeight, Cent, orderedKids);
+    lineKids(kid1, nodeHeight, Cent, orderedKids, uz);
+    lineKids(kid2, nodeHeight, Cent, orderedKids, uz);
 

@@ -4,7 +4,7 @@ addpath(genpath('tools/'));
 %iccv09: 0 void   1,1 sky  0,2 tree   2,3 road  1,4 grass  1,5 water  1,6 building  2,7 mountain 2,8 foreground
 set(0,'RecursionLimit',1000);
 params.numLabels = 7; % we never predict 0 (void)
-params.numFeat = 128;
+params.numFeat = 140;
 
 
 %%%%%%%%%%%%%%%%%%%%%%
@@ -19,7 +19,7 @@ params.f = @(x) (1./(1 + exp(-x)));
 params.df = @(z) (z .* (1 - z));
 params.actFunc = 'sigmoid';
 
-mainDataSet = 'penn-fudan-all';
+mainDataSet = 'penn-fudan-all-n1p';
 neighNameStem = ['../data/' mainDataSet '-allNeighborPairs'];
 
 %---------------------------------------------------------------

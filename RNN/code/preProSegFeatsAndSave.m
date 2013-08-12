@@ -52,6 +52,28 @@ for i = 1:length(allData)
     allData{i}.segLabels = segLabels;
 end
 
+%%%%%%%%%%%%%%%%%%%%
+% expectation observation
+for i = 1:length(allData)
+    labelRegs = allData{i}.labels;
+    segs = allData{i}.segs2;
+    numSegs = max(segs(:));
+    expectSegLabels = zeros(numSegs, params.numLabels);
+    for r = 1:numSegs
+        numPixelInSeg = numel(labelRegs(segs == r));
+        for ci = 1:params.numLabels
+            expectSegLabels(r,ci) = sum(labelRegs(segs==r) == ci) / numPixelInSeg;
+        end
+    end
+    allData{i}.expectSegLabels = expectSegLabels;
+end
+% fraction statistics
+allExpectSegLabels = zeros(1,params.numLabels);
+for i = 1:length(allData)
+    allExpectSegLabels = allExpectSegLabels + sum(allData{i}.expectSegLabels,1);
+end
+allExpectSegLabels = allExpectSegLabels / norm(allExpectSegLabels,1);
+
 % collect all good and bad segment pairs
 % pre-allocate (and later delete empty rows)
 if strcmp(mainDataSet,'msrc')

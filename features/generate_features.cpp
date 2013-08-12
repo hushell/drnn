@@ -309,7 +309,7 @@ int main(int argc, char* argv[])
 
 		//cout << "DEBUG 2\n";
 		//sprintf(fn, "%s/%s_spfeat.dat", spseg_features_dir.c_str(), s.c_str());     
-		sprintf(fn, "%s/%s_spfn1.dat", spseg_features_dir.c_str(), s.c_str());     
+		sprintf(fn, "%s/%s_spfn1p.dat", spseg_features_dir.c_str(), s.c_str());     
 		ofstream outfile(fn);
 		if(!outfile.is_open())
 		{
@@ -366,10 +366,14 @@ void computeNodeFeatures(string s, int hh, int ww,
 {
   //int posFOffset = numClusters;
   //int numGridFeatures = 64;
-  int texFOffset = numClusters;
+  int texFOffset = numClusters; // [64,127]
+  int numPosF = 12; // 4x3 grid
+  int posFOffset = texFOffset + numTextClusters; // [128, 139]
+  double uw = (int)(ww) / 3.0;
+  double uh = (int)(hh) / 4.0;
   
   //int numFeatures = numClusters + numGridFeatures;
-  int numFeatures = numClusters + numTextClusters;
+  int numFeatures = numClusters + numTextClusters + numPosF;
 
   vector<float> instanceNFR(numFeatures, 0);
   vector<vector<float> > instanceNF(numSP, instanceNFR);
@@ -449,14 +453,13 @@ void computeNodeFeatures(string s, int hh, int ww,
 	  int sp = mat[i][j];
 	  ++numInSP[sp];
 
-	  ////NOTE: 250/8 = 31.25 ie an 8x8 grid
-	  ///*Spatial/Position Feature*/
-	  ////get a bin between 1-8
-	  //int y = (int)(i / 31.25);
-	  //int x = (int)(j / 31.25);
-	  //
-	  ////put the "vote" into the appropriate bin -- normalize later
+	  /*Spatial/Position Feature*/
+	  int y = (int)(i / uh);
+	  int x = (int)(j / uw);
+	  
+	  //put the "vote" into the appropriate bin -- normalize later
 	  //++instanceNF[sp][posFOffset+(y<<3)+x];
+	  ++instanceNF[sp][posFOffset+x+y*3];
 
 	  /* Texton Feature */
 	  int texcluster;
@@ -520,6 +523,7 @@ void computeNodeFeatures(string s, int hh, int ww,
 	  assert(numInSPCompare[ni] == numInSPNeigh[ni]);
 	  //cout<< numInSPCompare[ni] << " " << numInSPNeigh[ni] << endl;
   }
+  // DEBUG code end
 
   	(*outfile) << numFeatures+1 << endl; // constant features
 
@@ -537,7 +541,7 @@ void computeNodeFeatures(string s, int hh, int ww,
 		// normalize texture part
 		if (neiMode > 0)
 		{
-			for(int j=texFOffset; j<numFeatures; j++)
+			for(int j=texFOffset; j<posFOffset; j++)
 			{
 				instanceNF[i][j] /= numInSPNeigh[i];
 				(*outfile) << instanceNF[i][j] << '\t';
@@ -545,11 +549,18 @@ void computeNodeFeatures(string s, int hh, int ww,
 		}
 		else
 		{
-			for(int j=texFOffset; j<numFeatures; j++)
+			for(int j=texFOffset; j<posFOffset; j++)
 			{
 				instanceNF[i][j] /= numInSP[i];
 				(*outfile) << instanceNF[i][j] << '\t';
 			}
+		}
+
+		// normalize pos part
+		for(int j=posFOffset; j<numFeatures; j++)
+		{
+			instanceNF[i][j] /= numInSP[i];
+			(*outfile) << instanceNF[i][j] << '\t';
 		}
 		(*outfile) << endl;
 

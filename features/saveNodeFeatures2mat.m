@@ -12,5 +12,5 @@ end
 X(numel(images)) = struct();
 for i = 1:numel(images)
     [numNodes, H] = readNodeFeatures(images{i}(1:end-4), spfeat_dir);
-    save([data_dir, '/feat_superpixels/', images{i}(1:end-4), '_node_n1.mat'], 'H');
+    save([data_dir, '/feat_superpixels/', images{i}(1:end-4), '_node_n1p.mat'], 'H');
 end
