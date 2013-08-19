@@ -53,6 +53,24 @@ for i = 1:length(allData)
 end
 
 %%%%%%%%%%%%%%%%%%%%
+% numLabelsPerSP
+for i = 1:length(allData)
+    labelRegs = allData{i}.labels;
+    segs = allData{i}.segs2;
+    numSegs = max(segs(:));
+    labelCountsPerSP = zeros(numSegs, params.numLabels);
+    numPixelInSP = zeros(numSegs, 1);
+    for r = 1:numSegs
+        numPixelInSP(r) = numel(labelRegs(segs == r));
+        for ci = 1:params.numLabels
+            labelCountsPerSP(r,ci) = sum(labelRegs(segs==r) == ci);
+        end
+    end
+    allData{i}.labelCountsPerSP = labelCountsPerSP;
+    allData{i}.numPixelInSP = numPixelInSP;
+end
+
+%%%%%%%%%%%%%%%%%%%%
 % expectation observation
 for i = 1:length(allData)
     labelRegs = allData{i}.labels;

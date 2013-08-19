@@ -12,7 +12,7 @@ tinyDatasetDebug = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%
 % data set: stanford background data set from Gould et al.
-mainDataSet = 'penn-fudan-all-n1p';
+mainDataSet = 'penn-fudan-all-context';
 setDataFolders
 
 %%%%%%%%%%%%%%%%%%%%%%%
@@ -27,7 +27,7 @@ options.TolX = 1e-4;
 %iccv09: 0 void   1,1 sky  0,2 tree   2,3 road  1,4 grass  1,5 water  1,6 building  2,7 mountain 2,8 foreground
 set(0,'RecursionLimit',1000);
 params.numLabels = 7; % we never predict 0 (void)
-params.numFeat = 140;
+params.numFeat = 268;
 
 
 %%%%%%%%%%%%%%%%%%%%%%
@@ -74,7 +74,7 @@ end
 
 if ~exist('allData','var')
     load(neighName,'allData','goodPairsL','goodPairsR','badPairsL','badPairsR','onlyGoodL','onlyGoodR','onlyGoodLabels','allSegs','allSegLabels');
-    evalSet=load(neighNameEval,'allData','goodPairsL','goodPairsR','badPairsL','badPairsR','onlyGoodL','onlyGoodR','onlyGoodLabels','allSegs','allSegLabels');
+%     evalSet=load(neighNameEval,'allData','goodPairsL','goodPairsR','badPairsL','badPairsR','onlyGoodL','onlyGoodR','onlyGoodLabels','allSegs','allSegLabels');
 end
 
 % start a matlab pool to use all CPU cores for full tree training

@@ -33,11 +33,14 @@ fprintf('processing the features!!\n');
 dataFolder = '/home/hushell/working/deep/RNN/codeAndDataSocherICML2011/data/penn-fudan-all-n1/';
 dataFolder = [dataFolder 'allInMatlab/'];
 
+trainList = {}; % TEMP
 testList = trainList; % recompute training data or testing data
 force = 0;
 whiten = 1;
 recompute = 0;
+allData = {}; % TEMP
 if (~exist('allData','var') || force)
+    fprintf('*** Recompute allData!\n');
     if exist('allData','var')
         clear allData;
     end
@@ -106,10 +109,18 @@ if (~exist('allData','var') || force)
 end
 
 if (~exist('Wcat','var'))
-    load ../output/penn-fudan-all-n1_fullParams_hid50_PTC0.0001_fullC0.0001_L0.05.mat
+    load ../output/penn-fudan-all-context_fullParams_hid50_PTC0.0001_fullC0.0001_L0.05.mat
 end
 
-verbose = 1;
+%% evaluation code
+
+ypred = [];
+ypredev = [];
+
+verbose = 0;
+
+% ----------------- training --------------------
+load ../data/penn-fudan-all-context-allNeighborPairs_train.mat;
 tot_err = 0;
 tot_sp = 0;
 tot_err_part = zeros(nlabel, 1);
@@ -129,6 +140,8 @@ for i = 1:length(allData)
         allData{i}.feat2,allData{i}.segLabels,params);
     
     pred = imgTreeTop.nodeCat(1:numFeat);
+    
+    ypred = [ypred; pred'];
     
     err = sum(pred(:) ~= gt_splabels(:));
     tot_err = tot_err + err;
@@ -164,3 +177,69 @@ for p = 1:nlabel
     acc = 100*(1-tot_err_part(p)/tot_sp_part(p));
     fprintf('acc of part %d = %g\n', p, acc);
 end
+
+% --------------- testing ------------------
+load ../data/penn-fudan-all-context-allNeighborPairs_eval.mat;
+tot_err = 0;
+tot_sp = 0;
+tot_err_part = zeros(nlabel, 1);
+tot_sp_part = zeros(nlabel, 1);
+for i = 1:length(allData)
+    % GT
+    %gt_splabels = multi_output(allData{i}.segLabels,nlabel);
+    gt_splabels = allData{i}.segLabels';
+    
+    % read superpixel features
+    feat = allData{i}.feat2;
+    numFeat = size(feat, 1);
+    feat = [feat, ones(numFeat, 1)]';
+
+    topCorr=0;
+    imgTreeTop = parseImage(topCorr,Wbot,W,Wout,Wcat,allData{i}.adj, ...
+        allData{i}.feat2,allData{i}.segLabels,params);
+    
+    pred = imgTreeTop.nodeCat(1:numFeat);
+    
+    ypredev = [ypredev; pred'];
+    
+    err = sum(pred(:) ~= gt_splabels(:));
+    tot_err = tot_err + err;
+    tot_sp = tot_sp + numFeat;
+    
+    for p = 1:nlabel
+        tpred = pred(gt_splabels == p);
+        tsplabels = gt_splabels(gt_splabels == p);
+        err = sum(tpred(:) ~= tsplabels(:));
+        tot_err_part(p) = tot_err_part(p) + err;
+        tot_sp_part(p) = tot_sp_part(p) + numel(tpred);
+    end
+    
+    if verbose,
+        fprintf('valid: [%d/%d] err: %d/%d, acc = %g\n', ...
+            i,length(allData),err,numFeat,100*(1-tot_err/tot_sp));
+        colorImgWithLabels(allData{i}.segs2,allData{i}.labels,pred,...
+            allData{i}.segLabels, allData{i}.img);
+    else
+        if ~mod(i,10),
+            fprintf('.');
+        end
+        if ~mod(i,100),
+            fprintf('[%d/%d] ',i,length(datanames));
+            fprintf('acc = %g\n',100*(1-tot_err/tot_sp));
+        end
+    end
+end
+acc = 100*(1-tot_err/tot_sp);
+fprintf('\nacc = %g\n', acc);
+
+for p = 1:nlabel
+    acc = 100*(1-tot_err_part(p)/tot_sp_part(p));
+    fprintf('acc of part %d = %g\n', p, acc);
+end
+
+load dat140.mat;
+nsp = size(X,1);
+nspev = size(Xev,1);
+nclass = 7;
+[cm, cmev, pcorr, pcorrev] = evaluation(ypred, ypredev, t, tev, y, yev, ...
+    nclass, nsp, nspev, pixcsp, pixcspev);

@@ -39,7 +39,7 @@ if (~exist('w_lr','var'))
     load('weights/lr_without_norm_feat.mat');
 end
 
-verbose = 1;
+verbose = 0;
 tot_err = 0;
 tot_sp = 0;
 tot_err_part = zeros(nlabel, 1);

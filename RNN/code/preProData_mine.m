@@ -5,7 +5,7 @@
 
 %dataset = '../data/iccv09/'
 %dataFolder = '../data/msrc/';
-dataFolder = '../data/penn-fudan-all-n1p/';
+dataFolder = '../data/penn-fudan-all-context/';
 
 rt_path = '/home/hushell/working/deep/datasets/pedestrian_parsing/Color/';
 lb_path = '/home/hushell/working/deep/datasets/pedestrian_parsing/GroundTruth/';
@@ -77,7 +77,7 @@ for asd=1:2
         assert(all(size(segs2)==size(labels)))
         
         %feat2= dlmread([dataFolder 'newFeatures/' fileList{i} '.0.txt']);
-        load([save_path, fileList{i}(1:end-4), '_node_n1p.mat'], 'H');
+        load([save_path, fileList{i}(1:end-4), '_node_context.mat'], 'H');
         feat2 = H(:,2:end);
         
         assert(size(feat2,1)==max(segs2(:)));
