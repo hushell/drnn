@@ -4,6 +4,7 @@ function visualizeParseTree3D(imgData,Wbot,W,Wout,Wcat,params,hLimit,subtree)
 % example: visualizeParseTree3D(allData{i},Wbot,W,Wout,Wcat,params,20);
 % load ../output/penn-fudan-all_fullParams_hid50_PTC0.0001_fullC0.0001_L0.05.mat
 % load ../data/penn-fudan-allData-train.mat
+% run('~/working/deep/vlfeat-0.9.16/toolbox/vl_setup.m');
 
 close all
 
