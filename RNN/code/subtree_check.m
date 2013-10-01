@@ -3,7 +3,7 @@
 
 % load [W, Wbot, Wcat, Wout], params and allData
 load ../output/penn-fudan-all_fullParams_hid50_PTC0.0001_fullC0.0001_L0.05.mat
-load ../data/penn-fudan-allData-train.mat
+load ../data/penn-fudan-128-allData-train.mat
 
 % compute all parse trees
 tree_file = '../output/penn-fudan-allTrees-train.mat';
@@ -25,6 +25,9 @@ if ~exist('allTrees','var')
         save('../output/penn-fudan-allTrees-train.mat', 'allTrees');
     end
 end
+
+% test DP
+make_change_points(allData{1}, allTrees{1}, 1);
 
 bg = 7;
 subtree_ids = cell(1,length(allData));
