@@ -11,3 +11,8 @@
 *.lai
 *.la
 *.a
+
+# data
+*.mat
+*.png
+*.jpg
