@@ -3,7 +3,7 @@
 
 % load [W, Wbot, Wcat, Wout], params and allData
 load ../output/iccv09-1_fullParams_hid50_PTC0.0001_fullC0.0001_L0.05_good.mat
-%load ../data/iccv09-allData-eval.mat
+load ../data/iccv09-allData-eval.mat
 
 % compute all parse trees
 tree_file = '../output/iccv09-allTrees-eval.mat';

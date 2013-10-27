@@ -26,7 +26,8 @@ global S maxS c st_graph
 numLeafNodes = size(imgData.adj,1);
 numTotalNodes = size(imgTreeTop.kids,1);
 if debug
-    numTotalNodes = 173; % for allTrees{1}, it's a subtree with 4 leafs
+    %numTotalNodes = 173; % for allTrees{1}, it's a subtree with 4 leafs
+    numTotalNodes = 224;
 end
 
 % -- leafs of each subtree
@@ -123,6 +124,7 @@ while imgTreeTop.kids(j,1) ~= 0 % only internal nodes
 end
 
 if vis
+    figure;
     run('~/working/deep/vlfeat-0.9.16/toolbox/vl_setup.m');
     colorImgWithLabels(imgData.segs2,imgData.labels,pred_labs,...
             imgData.segLabels, imgData.img);
@@ -152,3 +154,4 @@ maxS(top, kids(2)) = max(S(top, kids(2), :));
 
 compute_complement(imgTreeTop, top, kids(1));
 compute_complement(imgTreeTop, top, kids(2));
+

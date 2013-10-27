@@ -17,7 +17,10 @@ n_cuts = zeros(1,length(samples));
 k = 1;
 for i = samples
     tic;
-    [Q,cuts,labels] = make_change_points(imgData, tree, n_labs, i);
+    %[Q,cuts,labels] = make_change_points(imgData, tree, n_labs, i);
+    %[Q,cuts,labels] = merge_cut(imgData, tree, n_labs, i);
+    %[Q,cuts,labels] = majority_passing(imgData, tree, n_labs, i);
+    [Q,cuts,labels] = mc_propagation(imgData, tree, n_labs, i);
     fprintf('lambda = %d, took %f seconds.\n', i, toc);
     Q_all(k) = Q(end);
     err_all(k) = sum(labels == imgData.segLabels) / length(labels);

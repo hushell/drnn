@@ -27,6 +27,7 @@ if ~exist('allTrees','var')
 end
 
 %% test DP
+run('~/working/deep/vlfeat-0.9.16/toolbox/vl_setup.m');
 Q_all = cell(1,length(allData));
 pix_err_all = cell(1,length(allData));
 sp_err_all = cell(1,length(allData));

@@ -25,7 +25,7 @@ subplot(1,4,2); imshow(label2rgb(colorCat));
 subplot(1,4,3); imshow(label2rgb(spColorGT));
 subplot(1,4,4); imshow(label2rgb(labelim));
 
-pause
+%pause
 %imshow(label2rgb(colorCat));
 %imshow(scratch);
 
