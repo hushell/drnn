@@ -1,12 +1,18 @@
-function [Q_all, err_all, n_cuts] = test_DP(imgData, tree, n_labs, samples, vis)
+function [Q_all, err_all, n_cuts] = test_DP(imgData, tree, n_labs, theta_plus, samples, vis)
 % testing DP with different lambda
 
 if nargin < 4
+    theta_plus = zeros(1,n_labs);
     samples = 0:10:100;
     vis = 0;
 end
 
 if nargin < 5
+    samples = 0:10:100;
+    vis = 0;
+end
+
+if nargin < 6
     vis = 0;
 end
 
@@ -20,7 +26,9 @@ for i = samples
     %[Q,cuts,labels] = make_change_points(imgData, tree, n_labs, i);
     %[Q,cuts,labels] = merge_cut(imgData, tree, n_labs, i);
     %[Q,cuts,labels] = majority_passing(imgData, tree, n_labs, i);
-    [Q,cuts,labels] = mc_propagation(imgData, tree, n_labs, i);
+    %[Q,cuts,labels] = mc_propagation_old(imgData, tree, n_labs, i);
+    %[Q,cuts,labels] = mc_propagation(imgData, tree, n_labs, i);
+    [Q,cuts,labels] = tree_cut(imgData, tree, theta_plus, n_labs, i);
     fprintf('lambda = %d, took %f seconds.\n', i, toc);
     Q_all(k) = Q(end);
     err_all(k) = sum(labels == imgData.segLabels) / length(labels);

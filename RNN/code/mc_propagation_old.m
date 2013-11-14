@@ -1,4 +1,4 @@
-function [Q,cuts,labs] = mc_propagation(imgData, imgTreeTop, n_labs, lambda, vis, debug)
+function [Q,cuts,labs] = mc_propagation_old(imgData, imgTreeTop, n_labs, lambda, vis, debug)
 % DP: merge or cut, specifically,
 % Q(t) = max [ c(t), max_{s = kids(t)} Q(s) - lambda ]
 %
@@ -59,13 +59,9 @@ c = zeros(numTotalNodes, n_labs);
 % purity: # of correctly labeled pixels / count
 maxc = zeros(numTotalNodes, 1);
 
-% USE counts or conditional likelihood
-%csp = imgData.labelCountsPerSP;
-csp = imgTreeTop.catOut';
-
 for si = 1:numTotalNodes
     for li = 1:length(leafsUnder{si})
-        c(si,:) = c(si,:) + csp(leafsUnder{si}(li),:);
+        c(si,:) = c(si,:) + imgData.labelCountsPerSP(leafsUnder{si}(li),:);
     end
     maxc(si) = max(c(si,:));
 end
@@ -75,7 +71,7 @@ count_c = sum(c,2);
 % -- Q(t) 
 q = c;
 q(numLeafNodes+1:end,:) = -1;
-% 1: purify; 2: merge; 3: cutL; 4: cutR
+% 1: pure; 2: merge; 3: cutL; 4: cutR
 cut_at = zeros(numTotalNodes,n_labs); 
 
 % DP loop
@@ -92,8 +88,7 @@ for j = numLeafNodes+1:numTotalNodes
     q_cutR = maxR - lambda + q(L,:);
     %q_cutL = q(R,:); q_cutL(posR) = q_cutL(posR) + maxL - lambda;
     %q_cutR = q(L,:); q_cutR(posL) = q_cutR(posL) + maxR - lambda;
-    %q_all = [q_pure; q_merge; q_cutL; q_cutR];
-    q_all = [q_merge; q_cutL; q_cutR];
+    q_all = [q_pure; q_merge; q_cutL; q_cutR];
     
     [q(j,:), cut_at(j,:)] = max(q_all);
 end
@@ -102,45 +97,11 @@ end
 j = numTotalNodes;
 % superpixel labeling
 pred_labs = zeros(numLeafNodes,1);
-% [~,l] = max(q(j,:));
-% pred_labs(:) = l;
+[~,l] = max(q(j,:));
+pred_labs(:) = l;
+cut_if = zeros(numTotalNodes,1);
 
-cut_if = zeros(numTotalNodes,1); % if cut above
-cut_if(end) = 1;
-
-top_down_decoding(imgTreeTop, j);
-
-% -- labeling
-forest = zeros(numLeafNodes,1); 
-cnt_debug = zeros(numLeafNodes,1); % DEBUG: # cuts on the path to root
-cc = zeros(numTotalNodes, n_labs);
-for i = 1:numLeafNodes
-    j = i;
-    while 0 ~= j
-        if cut_if(j) == 1
-            forest(i) = j;
-            cc(j,:) = cc(j,:) + csp(i,:);
-            break
-            %cnt_debug(i) = cnt_debug(i) + 1;
-        end
-        j = imgTreeTop.pp(j);
-    end
-end
-
-for i = 1:numTotalNodes
-    if cut_if(i) == 1
-        [~,l] = max(cc(i,:));
-        pred_labs(forest == i) = l;
-    end
-end
-
-% can we use Q for labeling? seems yes, but why?
-% for i = numTotalNodes:-1:1
-%     if cut_if(i) == 1
-%         [~,l] = max(q(i,:));
-%         pred_labs(leafsUnder{i}) = l;
-%     end
-% end
+top_down_labeling(imgTreeTop, j);
 
 % -- final outputs
 labs = pred_labs;
@@ -156,9 +117,9 @@ end
 
 
 %% helper functions
-function top_down_decoding(imgTreeTop, j)
+function top_down_labeling(imgTreeTop, j)
 % pre-order traversal
-global cut_at q cut_if
+global pred_labs leafsUnder cut_at q c cut_if
 
 kids = imgTreeTop.getKids(j);
 if kids(1) == 0
@@ -168,21 +129,27 @@ end
 [~,pos] = max(q(j,:));
 decis = cut_at(j,pos);
 
-decis = decis + 1;
-if decis == 1 % purify
-    return
-elseif decis == 2 % merge
-    % so do nothing
-elseif decis == 3 % cutL
-    cut_if(kids(1)) = 1;
-elseif decis == 4 % cutR
-    cut_if(kids(2)) = 1;
+% [~,l] = max(q(j,:));
+% pred_labs(leafsUnder{j}) = l;
+
+if decis == 1
+    [~,l] = max(c(j,:));
+    pred_labs(leafsUnder{j}) = l;
+elseif decis == 2
+    % merge, so do nothing
+elseif decis == 3
+    [~,l] = max(q(kids(1),:));
+    pred_labs(leafsUnder{kids(1)}) = l;
+    cut_if(j) = 1;
+elseif decis == 4
+    [~,l] = max(q(kids(2),:));
+    pred_labs(leafsUnder{kids(2)}) = l;
+    cut_if(j) = 1;
 else
     disp('*** Something Wrong!');
     return
 end
 
-top_down_decoding(imgTreeTop, kids(1));
-top_down_decoding(imgTreeTop, kids(2));
-
+top_down_labeling(imgTreeTop, kids(1));
+top_down_labeling(imgTreeTop, kids(2));
 

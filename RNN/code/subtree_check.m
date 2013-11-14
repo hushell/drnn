@@ -32,10 +32,10 @@ Q_all = cell(1,length(allData));
 pix_err_all = cell(1,length(allData));
 sp_err_all = cell(1,length(allData));
 n_cuts_all = cell(1,length(allData));
-samples = 0:10:100;
+samples = 0:0.5:100;
 for i = 1:length(allData)
     i
-    [Q_all{i}, sp_err_all{i}, n_cuts_all{i}] = test_DP(allData{i}, allTrees{i}, 7, samples);
+    [Q_all{i}, sp_err_all{i}, n_cuts_all{i}] = test_DP(allData{i}, allTrees{i}, 7, theta_plus, samples);
     n_pixels = size(allData{i}.img,1)*size(allData{i}.img,2);
     pix_err_all{i} = Q_all{i} ./ n_pixels;
 end

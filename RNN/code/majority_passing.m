@@ -59,9 +59,13 @@ c = zeros(numTotalNodes, n_labs);
 % purity: # of correctly labeled pixels / count
 maxc = zeros(numTotalNodes, 1);
 
+% USE counts or conditional likelihood
+%csp = imgData.labelCountsPerSP;
+csp = imgTreeTop.catOut';
+
 for si = 1:numTotalNodes
     for li = 1:length(leafsUnder{si})
-        c(si,:) = c(si,:) + imgData.labelCountsPerSP(leafsUnder{si}(li),:);
+        c(si,:) = c(si,:) + csp(leafsUnder{si}(li),:);
     end
     maxc(si) = max(c(si,:));
 end

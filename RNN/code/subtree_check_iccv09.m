@@ -31,10 +31,16 @@ Q_all = cell(1,length(allData));
 pix_err_all = cell(1,length(allData));
 sp_err_all = cell(1,length(allData));
 n_cuts_all = cell(1,length(allData));
-samples = 0:10:100;
+samples = 0:0.5:10;
 for i = 1:length(allData)
+    if ismember(i, [2,27,33,68,127,133,134])
+        Q_all{i} = Q_all{i-1}; sp_err_all{i} = sp_err_all{i-1}; n_cuts_all{i} = n_cuts_all{i-1};
+        pix_err_all{i} = pix_err_all{i-1};
+        continue
+    end % has some all-0 superpixels
+    
     fprintf('--- %d ---', i);
-    [Q_all{i}, sp_err_all{i}, n_cuts_all{i}] = test_DP(allData{i}, allTrees{i}, 8, samples);
+    [Q_all{i}, sp_err_all{i}, n_cuts_all{i}] = test_DP(allData{i}, allTrees{i}, 8, theta_plus, samples);
     n_pixels = size(allData{i}.img,1)*size(allData{i}.img,2);
     pix_err_all{i} = Q_all{i} ./ n_pixels;
 end
