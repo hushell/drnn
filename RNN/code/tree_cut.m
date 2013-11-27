@@ -1,4 +1,4 @@
-function [Q,cuts,labs] = tree_cut(imgData, imgTreeTop, theta_plus, n_labs, lambda, vis, debug)
+function [Q,cuts,labs,forest] = tree_cut(imgData, imgTreeTop, theta_plus, n_labs, p_connect, vis, debug)
 % DP: tree-cut algorithm
 % Q(t,z) = max [ Q(l,z) + Q(r,z), max_z Q(l,z) + Q(r,z) - lambda, 
 %                Q(l,z) + max_z Q(r,z) - lambda ]
@@ -6,7 +6,8 @@ function [Q,cuts,labs] = tree_cut(imgData, imgTreeTop, theta_plus, n_labs, lambd
 % @param imgData: image related data
 % @param imgTreeTop: RNN tree
 % @param theta_plus: MLE estimated parameters
-% @param lambda: penalty for introducing a cut
+% @param n_labs: number of classes
+% @param p_connect: penalty for introducing a cut
 % @param vis: whether visualize the segmentation
 % @param debug: use subtree for debugging
 % NOTE: for visualizing, you need to have vlfeat somewhere and setup it, e.g.
@@ -16,7 +17,7 @@ function [Q,cuts,labs] = tree_cut(imgData, imgTreeTop, theta_plus, n_labs, lambd
 % @return cuts: a indicator vector, cuts(j) = 1 means there is a cut above node j
 % @return labs: predicted labels of leafs
 %
-% example: [Q,cuts,labels] = tree_cut(allData{i}, allTrees{i}, 8, 0, 1, 0);
+% example: [Q,cuts,labels] = tree_cut(allData{i}, allTrees{i}, theta_plus, 8, 0.1, 1, 0);
 
 
 if nargin < 6
@@ -56,17 +57,20 @@ end
 
 
 % -- counts of pixel for each subtree
-% USE counts or conditional likelihood
-csp = imgData.labelCountsPerSP;
+% USE counts 
+csp = imgData.labelCountsPerSP; 
+% USE conditional likelihood
+%csp = imgTreeTop.catOut(:,1:numLeafNodes)' .* repmat(imgData.numPixelInSP, 1, n_labs);
+
 count_csp = sum(csp,2);
 
 % USE P(Y_j | z_j) = Y_jz log(theta_plus / theta_minus) + \sum_{k} Y_jk log(theta_minus)
 theta_minus = (1 - theta_plus) ./ (n_labs - 1);
-theta_plus = log(theta_plus);
-theta_minus = log(theta_minus);
-theta = theta_plus - theta_minus;
-csp = csp .* repmat(theta, numLeafNodes, 1) ...
-    + repmat(count_csp,1,n_labs) .* repmat(theta_minus, numLeafNodes, 1);
+l_theta_plus = log(theta_plus);
+l_theta_minus = log(theta_minus);
+l_theta_diff = l_theta_plus - l_theta_minus;
+csp = csp .* repmat(l_theta_diff, numLeafNodes, 1) ...
+    + repmat(count_csp,1,n_labs) .* repmat(l_theta_minus, numLeafNodes, 1);
 
 % -- Q(t) 
 q = zeros(numTotalNodes, n_labs); % max likelihood
@@ -75,16 +79,22 @@ q(1:numLeafNodes,:) = csp;
 cut_at = zeros(numTotalNodes,n_labs); 
 
 % DP loop
+prior_merge = log(p_connect) + log(p_connect); prior_merge = prior_merge * 5000;
+prior_cut = log(p_connect) + log(1-p_connect) - log(n_labs); prior_cut = prior_cut * 5000;
+fprintf('p: %f, prior_merge = %f, prior_cut = %f\n', p_connect, prior_merge, prior_cut);
+
 for j = numLeafNodes+1:numTotalNodes
     kids = imgTreeTop.getKids(j);
     L = kids(1); R = kids(2);
     
     [maxL,posL] = max(q(L,:));
     [maxR,posR] = max(q(R,:));
+    %maxL = sum(q(L,:));
+    %maxR = sum(q(R,:));
     
-    q_merge = q(L,:) + q(R,:);
-    q_cutL = maxL - lambda + q(R,:);
-    q_cutR = maxR - lambda + q(L,:);
+    q_merge = q(L,:) + q(R,:) + prior_merge;
+    q_cutL = maxL + q(R,:) + prior_cut;
+    q_cutR = maxR + q(L,:) + prior_cut;
     
     q_all = [q_merge; q_cutL; q_cutR];
     [q(j,:), cut_at(j,:)] = max(q_all);
@@ -131,10 +141,11 @@ end
 % -- final outputs and visualization
 labs = pred_labs;
 cuts = cut_if;
-Q = max(q,[],2);
+%Q = max(q,[],2);
+Q = csp(1:numLeafNodes, pred_labs);
 
 if vis
-    %figure;
+    figure(p_connect*100000);
     colorImgWithLabels(imgData.segs2,imgData.labels,pred_labs,...
             imgData.segLabels, imgData.img);
 
@@ -143,7 +154,7 @@ if vis
         sp_map(imgData.segs2 == i) = forest(i);
     end
 
-    figure;
+    figure(p_connect*100000+1);
     imagesc(sp_map);
     title(sprintf('There are %d segments (subtrees) in the forest', sum(cut_if)));
 end

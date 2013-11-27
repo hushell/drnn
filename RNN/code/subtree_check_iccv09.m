@@ -4,6 +4,7 @@
 % load [W, Wbot, Wcat, Wout], params and allData
 load ../output/iccv09-1_fullParams_hid50_PTC0.0001_fullC0.0001_L0.05_good.mat
 load ../data/iccv09-allData-eval.mat
+run('~/working/deep/vlfeat-0.9.16/toolbox/vl_setup.m');
 
 % compute all parse trees
 tree_file = '../output/iccv09-allTrees-eval.mat';
@@ -31,7 +32,7 @@ Q_all = cell(1,length(allData));
 pix_err_all = cell(1,length(allData));
 sp_err_all = cell(1,length(allData));
 n_cuts_all = cell(1,length(allData));
-samples = 0:0.5:10;
+samples = 0:0.05:1;
 for i = 1:length(allData)
     if ismember(i, [2,27,33,68,127,133,134])
         Q_all{i} = Q_all{i-1}; sp_err_all{i} = sp_err_all{i-1}; n_cuts_all{i} = n_cuts_all{i-1};

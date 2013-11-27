@@ -1,33 +1,80 @@
-function [numLabels scratch] = colorImgWithLabels(segMap, labelim, nodeLabels, gtLabels, im)
+function [numLabels scratch] = colorImgWithLabels(segMap, im, nodeLabels, colmap, saveTo)
 
 [h w] = size(segMap);
 
-%fullMask = zeros(h,w);
+fullMask = zeros(h,w);
 %wordsForMask = {'bla'};
 
-scratch = labelim;
+scratch = im;
 numLabels = 0;
-colorCat = zeros(h,w);
-spColorGT = zeros(h,w);
+
 
 %numSegs = max(segMap(:));
 for i = 1:length(nodeLabels)
-    colorCat(segMap == i) = nodeLabels(i);
-    spColorGT(segMap == i) = gtLabels(i);
+    col = colmap(nodeLabels(i),:);
+    
+    %string = get(trans, words{i});
+    %     if (isempty(string))
+    %         s = scratch(:,:,1);
+    %         s(segMap == i) = s(segMap == i)/3;
+    %         scratch(:,:,1) = s;
+    %         s = scratch(:,:,2);
+    %         s(segMap == i) = s(segMap == i)/3;
+    %         scratch(:,:,2) = s;
+    %         s = scratch(:,:,3);
+    %         s(segMap == i) = s(segMap == i)/3;
+    %         scratch(:,:,3) = s;
+    %     else
+    %         %scratch = scratch / 3;
+    
+    s = scratch(:,:,1);
+    s(segMap == i) = s(segMap == i)/3 + 100*col(1);
+    scratch(:,:,1) = s;
+    s = scratch(:,:,2);
+    s(segMap == i) = s(segMap == i)/3 + 100*col(2);
+    scratch(:,:,2) = s;
+    s = scratch(:,:,3);
+    s(segMap == i) = s(segMap == i)/3 + 100*col(3);
+    scratch(:,:,3) = s;
+    %         if ~ismember(wordsForMask,string)
+    %             wordsForMask{end+1} = string;
+    %         end
+    %fullMask(segMap == i) = find(strcmp(string,wordsForMask));
+    %
+    %
+    %     end
 end
 
-[sx,sy]=vl_grad(double(segMap), 'type', 'forward') ;
-s = find(sx | sy) ;
-imp = im ;
-imp([s s+numel(im(:,:,1)) s+2*numel(im(:,:,1))]) = 0 ;
-subplot(1,4,1); imagesc(imp) ; axis image off ;
-subplot(1,4,2); imshow(label2rgb(colorCat));
-subplot(1,4,3); imshow(label2rgb(spColorGT));
-subplot(1,4,4); imshow(label2rgb(labelim));
+imshow(scratch);
+% if onlyOneLabel
+%     hold on;
+%     for obs = 2:length(wordsForMask)
+%         string = wordsForMask{obs};
+%         col = get(colmap, string);
+%         [r, c] = segmentCenter(fullMask, obs);
+%         text(c, r, string,'FontSize',18,'EdgeColor', col, 'BackgroundColor', [1 1 1], 'LineWidth', 3);
+%     end
+%   hold off;
+% else
+%     hold on;
+%     for i = 1:numSegs
+%         string = get(trans, words{i});
+%         annotated = get(lex, words{i});
+%         if (~isempty(string))
+%             col = get(colmap, string);
+%             if (~isempty(annotated))
+%                 string = sprintf('(%s)', string);
+%             end
+%             numLabels = numLabels + 1;
+%             [r, c] = segmentCenter(segMap, i);
+%             text(c, r, string, 'EdgeColor', col, 'BackgroundColor', [1 1 1], 'LineWidth', 2);
+%         end
+%     end
+%     hold off;
+% end
 
-%pause
-%imshow(label2rgb(colorCat));
-%imshow(scratch);
-
-
+if exist('saveTo', 'var')
+    print([saveTo '.png'], '-dpng')
+    %     print([saveTo '.eps'], '-depsc')
+end
 end

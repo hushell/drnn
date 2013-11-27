@@ -1,7 +1,7 @@
 % demo stanford background
 %iccv09: 0 void   1,1 sky  0,2 tree   2,3 road  1,4 grass  1,5 water  1,6 building  2,7 mountain 2,8 foreground
 
-clear
+%clear
 close all
 
 % vlfeat
@@ -15,8 +15,8 @@ load ../data/iccv09-allData-eval.mat
 load ../output/iccv09-allTrees-eval.mat
 
 % MLE for theta_plus
-MLE_theta;
+theta_plus = MLE_theta(allData, 8);
 
-% example
-i = 1;
-[Q,cuts,labels] = tree_cut(allData{i}, allTrees{i}, theta_plus, 8, 4, 1, 0);
+% example (2 and 4 are totally failed egs, seems because RNN prediction scores are incorrect)
+i = 4;
+[Q,cuts,labels] = tree_cut(allData{i}, allTrees{i}, theta_plus, 8, 0.112, 1, 0);

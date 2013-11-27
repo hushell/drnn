@@ -31,8 +31,7 @@ if segCatsOrTree==1
     
 % saveTo = [visuFolder 'imgLabels' num2str(num)];
 % colorImgWithLabels(imgData.segs2,imgData.img,imgTreeTop.nodeCat,colmap,saveTo);
-colorImgWithLabels(imgData.segs2,imgData.labels,imgTreeTop.nodeCat,...
-    imgData.segLabels, imgData.img);
+colorImgWithLabels_vlfeat(imgData.segs2,imgData.labels,imgTreeTop.nodeCat,imgData.segLabels, imgData.img);
     
     
 elseif segCatsOrTree==2
@@ -67,4 +66,25 @@ elseif segCatsOrTree==2
         pause;
     end
     
+elseif segCatsOrTree==3
+    %1 hair
+    %2 face
+    %3 ucloth 
+    %4 lcloth 
+    %5 arms  
+    %6 legs
+    %7 BG 
+    colmap = [...
+    0.5451    0.2706    0.0745;... % 1 SaddleBrown
+    1.0000    0.6471         0;... % 2 Orange
+    0         1.0000         0;... % 3 normal green
+    0.5451    0.1333    0.3216;... % 4 VioletRed4    
+    0.4196    0.5569    0.1373;... % 5 dark green
+         0         0    1.0000;... % 6 blue
+    1.0000         0         0;... % 7 red
+    ];
+    
+saveTo = [visuFolder 'imgLabels' num2str(num)];
+colorImgWithLabels(imgData.segs2,imgData.img,imgTreeTop.nodeCat,colmap,saveTo);
+            
 end
