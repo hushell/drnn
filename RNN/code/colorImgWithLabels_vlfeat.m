@@ -1,4 +1,4 @@
-function [numLabels scratch] = colorImgWithLabels(segMap, labelim, nodeLabels, gtLabels, im)
+function [numLabels scratch] = colorImgWithLabels_vlfeat(segMap, labelim, nodeLabels, gtLabels, im)
 
 [h w] = size(segMap);
 
@@ -20,10 +20,10 @@ end
 s = find(sx | sy) ;
 imp = im ;
 imp([s s+numel(im(:,:,1)) s+2*numel(im(:,:,1))]) = 0 ;
-subplot(2,2,1); imagesc(imp) ; axis image off ;
-subplot(2,2,2); imshow(label2rgb(colorCat));
-subplot(2,2,3); imshow(label2rgb(spColorGT));
-subplot(2,2,4); imshow(label2rgb(labelim));
+subplot(2,2,1); imagesc(imp) ; axis image off ; title('superpixel');
+subplot(2,2,2); imshow(label2rgb(colorCat)); title('prediction');
+subplot(2,2,3); imshow(label2rgb(spColorGT)); title('sp GT');
+subplot(2,2,4); imshow(label2rgb(labelim)); title('GT');
 
 %pause
 %imshow(label2rgb(colorCat));

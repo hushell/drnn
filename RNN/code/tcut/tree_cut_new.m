@@ -1,7 +1,8 @@
-function [Q,cuts,labs,forest] = tree_cut(imgData, imgTreeTop, theta_plus, n_labs, p_connect, vis, debug)
+function [Q,cuts,labs,forest] = ...
+    tree_cut_new(imgData, imgTreeTop, theta_plus, n_labs, p_connect, vis, debug)
 % DP: tree-cut algorithm
-% Q(t,z) = max [ Q(l,z) + Q(r,z), max_z Q(l,z) + Q(r,z) - lambda, 
-%                Q(l,z) + max_z Q(r,z) - lambda ]
+% Q(t,z) = max [ Q(l,z) + Q(r,z) + prior_merge, max_z Q(l,z) + Q(r,z) + prior_cut, 
+%                Q(l,z) + max_z Q(r,z) + prior_cut]
 %
 % @param imgData: image related data
 % @param imgTreeTop: RNN tree
@@ -16,8 +17,9 @@ function [Q,cuts,labs,forest] = tree_cut(imgData, imgTreeTop, theta_plus, n_labs
 % @return Q: maximum likelihood for each node
 % @return cuts: a indicator vector, cuts(j) = 1 means there is a cut above node j
 % @return labs: predicted labels of leafs
+% @return forest: forest(j) = i means leaf j is under subtree rooted at i
 %
-% example: [Q,cuts,labels] = tree_cut(allData{i}, allTrees{i}, theta_plus, 8, 0.1, 1, 0);
+% example: [Q,cuts,labels,forest] = tree_cut(allData{i}, allTrees{i}, theta_plus, 8, 0.1, 1, 0);
 
 
 if nargin < 6
@@ -30,7 +32,7 @@ if nargin < 7
 end
 
 % -- global variables
-global q cut_at cut_if
+global q cut_at cut_if pred_labs
 
 numLeafNodes = size(imgData.adj,1);
 numTotalNodes = size(imgTreeTop.kids,1);
@@ -57,18 +59,21 @@ end
 
 
 % -- counts of pixel for each subtree
-% USE counts 
+% USE counts (GT)
 csp = imgData.labelCountsPerSP; 
 % USE conditional likelihood
 %csp = imgTreeTop.catOut(:,1:numLeafNodes)' .* repmat(imgData.numPixelInSP, 1, n_labs);
-
 count_csp = sum(csp,2);
 
-% USE P(Y_j | z_j) = Y_jz log(theta_plus / theta_minus) + \sum_{k} Y_jk log(theta_minus)
+% compute likelihood for each superpixel
+
+% USE P(Y_j | z_j) = nml * Y_jz log(theta_plus / theta_minus) + \sum_{k} Y_jk log(theta_minus)
 theta_minus = (1 - theta_plus) ./ (n_labs - 1);
 l_theta_plus = log(theta_plus);
 l_theta_minus = log(theta_minus);
 l_theta_diff = l_theta_plus - l_theta_minus;
+
+% factorial(n) = gamma(n+1), nml = n!/(x_1!...x_n!)
 nml = gammaln(sum(csp,2)+1)-sum(gammaln(csp+1),2);
 csp = csp .* repmat(l_theta_diff, numLeafNodes, 1) ...
     + repmat(count_csp,1,n_labs) .* repmat(l_theta_minus, numLeafNodes, 1) ...
@@ -77,15 +82,22 @@ csp = csp .* repmat(l_theta_diff, numLeafNodes, 1) ...
 % -- Q(t) 
 q = zeros(numTotalNodes, n_labs); % max likelihood
 q(1:numLeafNodes,:) = csp;
+
 % track decisions, values range from 1: merge; 2: cutL; 3: cutR
 cut_at = zeros(numTotalNodes,n_labs); 
 
 % DP loop
-const1 = 1;
-prior_merge = log(p_connect) + log(p_connect); prior_merge = prior_merge * const1;
-prior_cut = log(p_connect) + log(1-p_connect) - log(n_labs); prior_cut = prior_cut * const1;
-%prior_cut = log(p_connect) + log(1-p_connect); prior_cut = prior_cut * const1 - log(n_labs);
-fprintf('p: %f, prior_merge = %f, prior_cut = %f\n', p_connect, prior_merge, prior_cut);
+if p_connect < 0
+    prior_merge = 0;
+    prior_cut = 0;
+else
+    const1 = 1;
+    prior_merge = log(p_connect) + log(p_connect); prior_merge = prior_merge * const1;
+    prior_cut = log(p_connect) + log(1-p_connect) - log(n_labs); prior_cut = prior_cut * const1;
+    %prior_cut = log(p_connect) + log(1-p_connect); prior_cut = prior_cut * const1 - log(n_labs);
+end
+fprintf('p: %f, prior_merge = %f, prior_cut = %f, diff = %f\n', ...
+    p_connect, prior_merge, prior_cut, prior_merge-prior_cut);
 
 for j = numLeafNodes+1:numTotalNodes
     kids = imgTreeTop.getKids(j);
@@ -93,11 +105,11 @@ for j = numLeafNodes+1:numTotalNodes
     
     [maxL,posL] = max(q(L,:));
     [maxR,posR] = max(q(R,:));
-    %maxL = sum(q(L,:));
-    %maxR = sum(q(R,:));
+    %maxL = 0;
+    %maxR = 0;
     
-    prior_merge = 0;
-    prior_cut = -1;
+    %prior_merge = 0.1;
+    %prior_cut = 0;
     
     q_merge = q(L,:) + q(R,:) + prior_merge;
     q_cutL = maxL + q(R,:) + prior_cut;
@@ -110,52 +122,38 @@ for j = numLeafNodes+1:numTotalNodes
     
     fprintf('q_L %d = \n', L); disp(q(L,:));
     fprintf('q_R %d = \n', R); disp(q(R,:));
-    
-    q_diff = q_merge - q(j,:);
-    q_all
+
     fprintf('q_j %d = \n', j); disp(q(j,:));
     fprintf('cut_at_where %d = \n', j); disp(cut_at(j,:));
-    q_diff
-    %fprintf('q_diff %d: %f\n', j, max(q_diff));
 end
-
 
 % -- top down decoding
 cut_if = zeros(numTotalNodes,1); % if cut above
 cut_if(end) = 1; % always cut above root node
+pred_labs = zeros(numTotalNodes,1);
 
 j = numTotalNodes;
-top_down_decoding(imgTreeTop, j); % output cut_if
+[~,state] = max(q(j,:));
+pred_labs(j) = state;
+
+% NOTE if a decision is postponed, both kids will be cut at this moment
+% i.e., treat it as a leaf node currently
+top_down_decoding(imgTreeTop, j, state); % output cut_if
 
 
-% -- superpixel labeling
-forest = zeros(numLeafNodes,1); % indicate leafs belong to which tree 
-cc = zeros(numTotalNodes, n_labs); % collection of leaf likelihood under resulting tree
-%cnt_debug = zeros(numLeafNodes,1); % DEBUG: # of cuts on the path to root
+forest = zeros(numTotalNodes,1); % indicate leafs belong to which tree 
 
 % find the lowest cuts
-for i = 1:numLeafNodes
+for i = 1:numTotalNodes
     j = i;
     while 0 ~= j % parent(top) = 0
-        if cut_if(j) == 1
+        if cut_if(j) == 1 
             forest(i) = j;
-            cc(j,:) = cc(j,:) + csp(i,:); % collect leafs
             break
-            %cnt_debug(i) = cnt_debug(i) + 1;
         end
         j = imgTreeTop.pp(j); % go to parent
     end
 end
-
-% lemma: for each root in the forest, there is at least one leaf under it
-pred_labs = zeros(numLeafNodes,1);
-for i = 1:numTotalNodes
-    if cut_if(i) == 1 % if it is a root
-        [~,l] = max(cc(i,:));
-        pred_labs(forest == i) = l;
-    end
-end
-
 
 % -- final outputs and visualization
 labs = pred_labs;
@@ -166,7 +164,7 @@ Q = csp(1:numLeafNodes, pred_labs);
 if vis
     figure(p_connect*100000);
     %figure(100);
-    colorImgWithLabels(imgData.segs2,imgData.labels,pred_labs,...
+    colorImgWithLabels_vlfeat(imgData.segs2,imgData.labels,pred_labs,...
             imgData.segLabels, imgData.img);
 
     sp_map = zeros(size(imgData.labels));
@@ -181,30 +179,39 @@ if vis
 end
 
 %% helper functions
-function top_down_decoding(imgTreeTop, j)
+function top_down_decoding(imgTreeTop, j, state)
 % pre-order traversal
-global cut_at q cut_if
+global cut_at q cut_if pred_labs
 
 kids = imgTreeTop.getKids(j);
-if kids(1) == 0
+L = kids(1);
+R = kids(2);
+if L == 0
     return
 end
 
-[~,pos] = max(q(j,:)); % which state is max
-decis = cut_at(j,pos); % decision for this state
+decis = cut_at(j,state); % decision for this state
 
 if decis == 1 % merge
-    % so do nothing
+    stateL = state;
+    stateR = state;
 elseif decis == 2 % cutL
     cut_if(kids(1)) = 1;
+    [~,stateL] = max(q(L,:));
+    stateR = state;
 elseif decis == 3 % cutR
     cut_if(kids(2)) = 1;
+    [~,stateR] = max(q(R,:));
+    stateL = state;
 else
     disp('*** Something Wrong!');
     return
 end
 
-top_down_decoding(imgTreeTop, kids(1));
-top_down_decoding(imgTreeTop, kids(2));
+pred_labs(L) = stateL;
+pred_labs(R) = stateR;
+
+top_down_decoding(imgTreeTop, L, stateL);
+top_down_decoding(imgTreeTop, R, stateR);
 
 

@@ -79,8 +79,9 @@ q(1:numLeafNodes,:) = csp;
 cut_at = zeros(numTotalNodes,n_labs); 
 
 % DP loop
-prior_merge = log(p_connect) + log(p_connect); prior_merge = prior_merge * 5000;
-prior_cut = log(p_connect) + log(1-p_connect) - log(n_labs); prior_cut = prior_cut * 5000;
+const1 = 1;
+prior_merge = log(p_connect) + log(p_connect); prior_merge = prior_merge * const1;
+prior_cut = log(p_connect) + log(1-p_connect) - log(n_labs); prior_cut = prior_cut * const1;
 fprintf('p: %f, prior_merge = %f, prior_cut = %f\n', p_connect, prior_merge, prior_cut);
 
 for j = numLeafNodes+1:numTotalNodes

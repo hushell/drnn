@@ -1,4 +1,5 @@
-function [Q,cuts,labs,forest] = tree_cut_postpone(imgData, imgTreeTop, theta_plus, n_labs, p_connect, vis, debug)
+function [Q,cuts,labs,forest,q_max_diff,q_max_diff_ind,postpone] = ...
+    tree_cut_postpone(imgData, imgTreeTop, theta_plus, n_labs, p_connect, vis, debug)
 % DP: tree-cut algorithm
 % Q(t,z) = max [ Q(l,z) + Q(r,z), max_z Q(l,z) + Q(r,z) - lambda, 
 %                Q(l,z) + max_z Q(r,z) - lambda ]
@@ -16,8 +17,9 @@ function [Q,cuts,labs,forest] = tree_cut_postpone(imgData, imgTreeTop, theta_plu
 % @return Q: maximum likelihood for each node
 % @return cuts: a indicator vector, cuts(j) = 1 means there is a cut above node j
 % @return labs: predicted labels of leafs
+% @return forest: forest(j) = i means leaf j is under subtree rooted at i
 %
-% example: [Q,cuts,labels] = tree_cut(allData{i}, allTrees{i}, theta_plus, 8, 0.1, 1, 0);
+% example: [Q,cuts,labels,forest] = tree_cut(allData{i}, allTrees{i}, theta_plus, 8, 0.1, 1, 0);
 
 
 if nargin < 6
@@ -57,18 +59,20 @@ end
 
 
 % -- counts of pixel for each subtree
-% USE counts 
+% USE counts (GT)
 csp = imgData.labelCountsPerSP; 
 % USE conditional likelihood
 %csp = imgTreeTop.catOut(:,1:numLeafNodes)' .* repmat(imgData.numPixelInSP, 1, n_labs);
 
 count_csp = sum(csp,2);
 
-% USE P(Y_j | z_j) = Y_jz log(theta_plus / theta_minus) + \sum_{k} Y_jk log(theta_minus)
+% compute likelihood for each superpixel
+% USE P(Y_j | z_j) = nml * Y_jz log(theta_plus / theta_minus) + \sum_{k} Y_jk log(theta_minus)
 theta_minus = (1 - theta_plus) ./ (n_labs - 1);
 l_theta_plus = log(theta_plus);
 l_theta_minus = log(theta_minus);
 l_theta_diff = l_theta_plus - l_theta_minus;
+% factorial(n) = gamma(n+1), nml = n!/(x_1!...x_n!)
 nml = gammaln(sum(csp,2)+1)-sum(gammaln(csp+1),2);
 csp = csp .* repmat(l_theta_diff, numLeafNodes, 1) ...
     + repmat(count_csp,1,n_labs) .* repmat(l_theta_minus, numLeafNodes, 1) ...
@@ -81,11 +85,23 @@ q(1:numLeafNodes,:) = csp;
 cut_at = zeros(numTotalNodes,n_labs); 
 
 % DP loop
-const1 = 1;
-prior_merge = log(p_connect) + log(p_connect); prior_merge = prior_merge * const1;
-prior_cut = log(p_connect) + log(1-p_connect) - log(n_labs); prior_cut = prior_cut * const1;
-%prior_cut = log(p_connect) + log(1-p_connect); prior_cut = prior_cut * const1 - log(n_labs);
-fprintf('p: %f, prior_merge = %f, prior_cut = %f\n', p_connect, prior_merge, prior_cut);
+q_max_diff = zeros(1,numTotalNodes-numLeafNodes);
+q_max_diff_ind = numLeafNodes+1:numTotalNodes;
+
+if p_connect < 0
+    prior_merge = 0;
+    prior_cut = 0;
+else
+    const1 = 1;
+    prior_merge = log(p_connect) + log(p_connect); prior_merge = prior_merge * const1;
+    prior_cut = log(p_connect) + log(1-p_connect) - log(n_labs); prior_cut = prior_cut * const1;
+    %prior_cut = log(p_connect) + log(1-p_connect); prior_cut = prior_cut * const1 - log(n_labs);
+end
+fprintf('p: %f, prior_merge = %f, prior_cut = %f, diff = %f\n', ...
+    p_connect, prior_merge, prior_cut, prior_merge-prior_cut);
+
+fp = fopen('equally-good.txt', 'a');
+fprintf(fp, '=========== p_connet = %f ==========\n', p_connect);
 
 for j = numLeafNodes+1:numTotalNodes
     kids = imgTreeTop.getKids(j);
@@ -106,26 +122,55 @@ for j = numLeafNodes+1:numTotalNodes
     q_all = [q_merge; q_cutL; q_cutR];
     [q(j,:), cut_at(j,:)] = max(q_all);
     
-%     fprintf('------------ node %d -------------\n', j);
-%     
-%     fprintf('q_L %d = \n', L); disp(q(L,:));
-%     fprintf('q_R %d = \n', R); disp(q(R,:));
+    fprintf('------------ node %d -------------\n', j);
+    
+    fprintf('q_L %d = \n', L); disp(q(L,:));
+    fprintf('q_R %d = \n', R); disp(q(R,:));
 %     
 %     q_diff = q_merge - q(j,:);
-%     q_all
-%     fprintf('q_j %d = \n', j); disp(q(j,:));
-%     fprintf('cut_at_where %d = \n', j); disp(cut_at(j,:));
+    q_all
+    fprintf('q_j %d = \n', j); disp(q(j,:));
+    fprintf('cut_at_where %d = \n', j); disp(cut_at(j,:));
 %     q_diff
-    %fprintf('q_diff %d: %f\n', j, max(q_diff));
+
+q_max_diff(j-numLeafNodes) = max(max(q_all(2:end,:))) - max(q_all(1,:));
+
+q_diff_ind_1 = find(q_merge - q_cutL == 0);
+q_diff_ind_2 = find(q_merge - q_cutR == 0);
+
+if ~isempty(intersect(q_diff_ind_1, q_diff_ind_2)) && p_connect > 0
+    fprintf('!!! equally good !!!\n\n\n');
+    fprintf(fp, '------------ equally good node %d -------------\n', j);
+    fprintf(fp, 'q_L %d = \n', L); fprintf(fp, '%f ', q(L,:)); fprintf(fp, '\n');
+    fprintf(fp, 'q_R %d = \n', R); fprintf(fp, '%f ', q(R,:)); fprintf(fp, '\n');
+    fprintf(fp, 'q_all = \n');
+    fprintf(fp, '%f ', q_all(1,:)); fprintf(fp, '\n');
+    fprintf(fp, '%f ', q_all(2,:)); fprintf(fp, '\n');
+    fprintf(fp, '%f ', q_all(3,:)); fprintf(fp, '\n');
+    fprintf(fp, 'q_j %d = \n', j); fprintf(fp, '%f ', q(j,:)); fprintf(fp, '\n');
+    fprintf(fp, 'cut_at_where %d = \n', j); fprintf(fp, '%f ', cut_at(j,:)); fprintf(fp, '\n');
+    [tmp_max, tmp_ind] = max(q(j,:));
+    fprintf(fp, 'max state = %f %d \n', tmp_max, tmp_ind);
+    fprintf(fp, '\n');
+end
+end
+
+fclose(fp);
+
+if p_connect < 0
+    [q_max_diff, tmp_ind] = sort(q_max_diff);
+    q_max_diff_ind = q_max_diff_ind(tmp_ind);
 end
 
 
 % -- top down decoding
 cut_if = zeros(numTotalNodes,1); % if cut above
 cut_if(end) = 1; % always cut above root node
-postp = zeros(numTotalNodes,1); % if postpone the decision
+postp = zeros(numTotalNodes,1); % if postpone the decision of cut which kid
 
 j = numTotalNodes;
+% NOTE if a decision is postponed, both kids will be cut at this moment
+% i.e., treat it as a leaf node currently
 top_down_decoding(imgTreeTop, j); % output cut_if
 
 
@@ -150,6 +195,8 @@ for i = 1:numTotalNodes
     end
 end
 
+% labeling 
+% NOTE postponed nodes will be labeled indepently of its kids in this phase
 % lemma: for each root in the forest, there is at least one leaf under it
 pred_labs = zeros(numTotalNodes,1);
 for i = 1:numTotalNodes
@@ -162,7 +209,8 @@ for i = 1:numTotalNodes
     end
 end
 
-% renew cut_if
+% renew cut_if for those postponed nodes
+% basic idea: cut will be canceled if kid has same label as its parent
 for i = numTotalNodes:-1:1
     if postp(i) == 1
         kids = imgTreeTop.getKids(i);
@@ -180,33 +228,40 @@ for i = numTotalNodes:-1:1
     end
 end
 
-% -- 
+% -- after updating cut_if, we do the labeling procedure again
 forest = zeros(numLeafNodes,1); % indicate leafs belong to which tree 
 cc = zeros(numTotalNodes, n_labs); % collection of leaf likelihood under resulting tree
-%cnt_debug = zeros(numLeafNodes,1); % DEBUG: # of cuts on the path to root
 
-% find the lowest cuts
-for i = 1:numLeafNodes
+% for i = 1:numLeafNodes
+%     j = i;
+%     while 0 ~= j % parent(top) = 0
+%         if cut_if(j) == 1 
+%             forest(i) = j;
+%             cc(j,:) = cc(j,:) + csp(i,:); % collect leafs
+%             break
+%         end
+%         j = imgTreeTop.pp(j); % go to parent
+%     end
+% end
+
+for i = 1:numTotalNodes
     j = i;
     while 0 ~= j % parent(top) = 0
         if cut_if(j) == 1 
             forest(i) = j;
-            cc(j,:) = cc(j,:) + csp(i,:); % collect leafs
+            if i <= numLeafNodes
+                cc(j,:) = cc(j,:) + csp(i,:); % collect leafs
+            end
             break
-            %cnt_debug(i) = cnt_debug(i) + 1;
         end
         j = imgTreeTop.pp(j); % go to parent
     end
 end
 
-% lemma: for each root in the forest, there is at least one leaf under it
 pred_labs = zeros(numLeafNodes,1);
 for i = 1:numTotalNodes
     if cut_if(i) == 1 % if it is a root
-        [maxcc,l] = max(cc(i,:));
-        if maxcc == 0
-            l = 0;
-        end
+        [~,l] = max(cc(i,:));
         pred_labs(forest == i) = l;
     end
 end
@@ -216,11 +271,12 @@ labs = pred_labs;
 cuts = cut_if;
 %Q = max(q,[],2);
 Q = csp(1:numLeafNodes, pred_labs);
+postpone = postp;
 
 if vis
     figure(p_connect*100000);
     %figure(100);
-    colorImgWithLabels(imgData.segs2,imgData.labels,pred_labs,...
+    colorImgWithLabels_vlfeat(imgData.segs2,imgData.labels,pred_labs,...
             imgData.segLabels, imgData.img);
 
     sp_map = zeros(size(imgData.labels));
@@ -247,8 +303,8 @@ end
 [mq,pos] = max(q(j,:)); % which state is max
 decis = cut_at(j,pos); % decision for this state
 
-loc = find(q(j,:) == mq);
-other_decis = cut_at(j,loc);
+loc = q(j,:) == mq;
+other_decis = cut_at(j,loc); % look for other decision that has equal q
 
 if ~isempty(find(other_decis ~= decis, 1))
     postp(j) = 1;
