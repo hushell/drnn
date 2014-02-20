@@ -1,5 +1,5 @@
-function [Q,cuts,labs,forest] = ...
-    tree_cut_new(imgData, imgTreeTop, theta_plus, n_labs, p_connect, vis, debug)
+function [Q,cuts,labs,forest, q_max_diff, q_max_diff_ind] = tree_cut_new(...
+  imgData, imgTreeTop, theta_plus, n_labs, p_connect, vis, debug)
 % DP: tree-cut algorithm
 % Q(t,z) = max [ Q(l,z) + Q(r,z) + prior_merge, max_z Q(l,z) + Q(r,z) + prior_cut, 
 %                Q(l,z) + max_z Q(r,z) + prior_cut]
@@ -8,7 +8,7 @@ function [Q,cuts,labs,forest] = ...
 % @param imgTreeTop: RNN tree
 % @param theta_plus: MLE estimated parameters
 % @param n_labs: number of classes
-% @param p_connect: penalty for introducing a cut
+% @param p_connect: prior of child-parent connection
 % @param vis: whether visualize the segmentation
 % @param debug: use subtree for debugging
 % NOTE: for visualizing, you need to have vlfeat somewhere and setup it, e.g.
@@ -17,9 +17,9 @@ function [Q,cuts,labs,forest] = ...
 % @return Q: maximum likelihood for each node
 % @return cuts: a indicator vector, cuts(j) = 1 means there is a cut above node j
 % @return labs: predicted labels of leafs
-% @return forest: forest(j) = i means leaf j is under subtree rooted at i
+% @return forest: forest(j) = i, means that leaf j is under subtree rooted at i
 %
-% example: [Q,cuts,labels,forest] = tree_cut(allData{i}, allTrees{i}, theta_plus, 8, 0.1, 1, 0);
+% example: [Q,cuts,labels,forest] = tree_cut_new(allData{4}, allTrees{4}, theta_plus, 8, 0.13, 0, 0);
 
 
 if nargin < 6
@@ -31,7 +31,7 @@ if nargin < 7
     debug = 0;
 end
 
-% -- global variables
+%% global variables
 global q cut_at cut_if pred_labs
 
 numLeafNodes = size(imgData.adj,1);
@@ -42,8 +42,7 @@ if debug
     %numTotalNodes = 224;
 end
 
-
-% -- leafs of each subtree
+%% leafs of each subtree
 numLeafsUnder = ones(numLeafNodes,1);
 leafsUnder = cell(numLeafNodes,1);
 
@@ -57,8 +56,7 @@ for n = numLeafNodes+1:numTotalNodes
     leafsUnder{n} = [leafsUnder{kids(1)} leafsUnder{kids(2)}];
 end
 
-
-% -- counts of pixel for each subtree
+%% counts of pixel for each subtree
 % USE counts (GT)
 csp = imgData.labelCountsPerSP; 
 % USE conditional likelihood
@@ -66,7 +64,6 @@ csp = imgData.labelCountsPerSP;
 count_csp = sum(csp,2);
 
 % compute likelihood for each superpixel
-
 % USE P(Y_j | z_j) = nml * Y_jz log(theta_plus / theta_minus) + \sum_{k} Y_jk log(theta_minus)
 theta_minus = (1 - theta_plus) ./ (n_labs - 1);
 l_theta_plus = log(theta_plus);
@@ -79,14 +76,14 @@ csp = csp .* repmat(l_theta_diff, numLeafNodes, 1) ...
     + repmat(count_csp,1,n_labs) .* repmat(l_theta_minus, numLeafNodes, 1) ...
     + repmat(nml,1,n_labs);
 
-% -- Q(t) 
+%% bottom-up phase: Q(t) 
 q = zeros(numTotalNodes, n_labs); % max likelihood
 q(1:numLeafNodes,:) = csp;
 
 % track decisions, values range from 1: merge; 2: cutL; 3: cutR
 cut_at = zeros(numTotalNodes,n_labs); 
 
-% DP loop
+% compute prior_merge & prior_cut
 if p_connect < 0
     prior_merge = 0;
     prior_cut = 0;
@@ -98,7 +95,12 @@ else
 end
 fprintf('p: %f, prior_merge = %f, prior_cut = %f, diff = %f\n', ...
     p_connect, prior_merge, prior_cut, prior_merge-prior_cut);
+  
+% for finding PR
+q_max_diff = zeros(1,numTotalNodes-numLeafNodes);
+q_max_diff_ind = numLeafNodes+1:numTotalNodes;
 
+% DP loop
 for j = numLeafNodes+1:numTotalNodes
     kids = imgTreeTop.getKids(j);
     L = kids(1); R = kids(2);
@@ -116,7 +118,7 @@ for j = numLeafNodes+1:numTotalNodes
     q_cutR = maxR + q(L,:) + prior_cut;
     
     q_all = [q_merge; q_cutL; q_cutR];
-    [q(j,:), cut_at(j,:)] = max(q_all);
+    [q(j,:), cut_at(j,:)] = max(q_all); % for each state, see which decision maximize Q
     
     fprintf('------------ node %d -------------\n', j);
     
@@ -125,22 +127,27 @@ for j = numLeafNodes+1:numTotalNodes
 
     fprintf('q_j %d = \n', j); disp(q(j,:));
     fprintf('cut_at_where %d = \n', j); disp(cut_at(j,:));
+    
+    q_max_diff(j-numLeafNodes) = max(max(q_all(2:end,:))) - max(q_all(1,:));
 end
 
-% -- top down decoding
+if p_connect < 0
+    [q_max_diff, tmp_ind] = sort(q_max_diff);
+    q_max_diff_ind = q_max_diff_ind(tmp_ind);
+end
+
+%% top down decoding
 cut_if = zeros(numTotalNodes,1); % if cut above
 cut_if(end) = 1; % always cut above root node
-pred_labs = zeros(numTotalNodes,1);
 
+pred_labs = zeros(numTotalNodes,1); % predicted label for each node
 j = numTotalNodes;
 [~,state] = max(q(j,:));
 pred_labs(j) = state;
 
-% NOTE if a decision is postponed, both kids will be cut at this moment
-% i.e., treat it as a leaf node currently
 top_down_decoding(imgTreeTop, j, state); % output cut_if
 
-
+% get forest
 forest = zeros(numTotalNodes,1); % indicate leafs belong to which tree 
 
 % find the lowest cuts
@@ -155,7 +162,7 @@ for i = 1:numTotalNodes
     end
 end
 
-% -- final outputs and visualization
+%% final outputs and visualization
 labs = pred_labs;
 cuts = cut_if;
 %Q = max(q,[],2);

@@ -1,4 +1,4 @@
-function [PRs,spErrs,nCuts] = evalSegPerImg(imgData, imgTreeTop, theta_plus, n_labs, lamb_samples, vis)
+function [PRs,spErrs,nCuts] = evalSegPerImg(tree_cut_func, imgData, imgTreeTop, theta_plus, n_labs, lamb_samples, vis)
 % evaluation segmentation per image, try different p_connect
 
 if nargin < 6
@@ -44,9 +44,9 @@ if vis == 1
     figure(100);
     clf;
     vl_tightsubplot(numel(lamb_samples)+2,r,'box','outer'); 
-    %imagesc(connectCompGT); 
-    imagesc(imgData.labels);
-    title('gt'); 
+    imagesc(connectCompGT); 
+    %imagesc(imgData.labels);
+    title('connected component gt'); 
     axis off
     r = r + 1;
     
@@ -56,15 +56,14 @@ if vis == 1
     
     vl_tightsubplot(numel(lamb_samples)+2,r,'box','outer'); 
     imagesc(spLabelGT);
-    title('sp gt'); 
+    title('superpixel gt'); 
     axis off
     r = r + 1;
 end
 
 % for each lambda (p_connect), run tree_cut_postpone()
 for lambda = lamb_samples
-    %[Q,cuts,labels,forest] = tree_cut_postpone(imgData, imgTreeTop, theta_plus, n_labs, lambda);
-    [Q,cuts,labs,forest] = tree_cut_new(imgData, imgTreeTop, theta_plus, n_labs, lambda);
+    [Q,cuts,labs,forest] = tree_cut_func(imgData, imgTreeTop, theta_plus, n_labs, lambda);
     labels = labs(1:length(imgData.segLabels));
     nCuts(j) = sum(cuts);
     
@@ -78,11 +77,12 @@ for lambda = lamb_samples
     spErrs(j) = sum(labels == imgData.segLabels) / length(labels);
     j = j + 1;
     
-    fprintf('------ GT number of Connected Component = %d\n', numel(unique(connectCompGT)));
+    fprintf('------ GT: number of Connected Component = %d\n', numel(unique(connectCompGT)));
  
     if vis == 1
         vl_tightsubplot(numel(lamb_samples)+2,r,'box','outer'); 
-        imagesc(colorCat); title(sprintf('p = %f', lambda));
+        %imagesc(colorCat); title(sprintf('p = %f', lambda));
+        imagesc(forestLabels); title(sprintf('p = %f', lambda));
         axis off
         r = r + 1;
     end
