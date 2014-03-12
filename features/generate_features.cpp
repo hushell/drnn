@@ -33,6 +33,9 @@ int iheight = 250, iwidth = 250;
 int numClusters = 64;
 int numTextClusters = 64;
 
+// image file extension
+string ext = "jpg";
+
 // define directories, to be set later
 
 //LFW Funneled Images directory
@@ -185,7 +188,7 @@ int main(int argc, char* argv[])
 			char fn[1024];
 
 			//sprintf(fn, "%s/%s/%s_%04d.jpg", lfw_dir.c_str(), s.c_str(), s.c_str(), n);
-			sprintf(fn, "%s/%s.png", lfw_dir.c_str(), s.c_str());
+			sprintf(fn, "%s/%s.%s", lfw_dir.c_str(), s.c_str(), ext.c_str());
 
 			IplImage *image = cvLoadImage(fn, -1);
 			if(image == NULL)
@@ -388,7 +391,7 @@ void computeNodeFeatures(string s, int hh, int ww,
   char fn[1024];
   
   //Funneled LFW images
-  sprintf(fn, "%s/%s.png", lfw_dir.c_str(), s.c_str());
+  sprintf(fn, "%s/%s.%s", lfw_dir.c_str(), s.c_str(), ext.c_str());
 
   IplImage *image = cvLoadImage(fn, -1);
   if(image == NULL)
@@ -733,6 +736,7 @@ int readSuperpixel(char *fn, int **&mat, int hh, int ww)
   if (m != hh || n != ww)
   {
 	cout << "size mismatched!" << endl;
+	printf("m = %d != hh = %d, n = %d != ww = %d\n", m, hh, n, ww);
 	return -1;
   }
 

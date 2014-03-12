@@ -1,7 +1,8 @@
 %
 
 %startup_directory;
-startup_penn_fudan;
+%startup_penn_fudan;
+startup_weizmann_horse;
 
 files = dir(lfw_dir);
 images = cell(length(files)-2,1);
