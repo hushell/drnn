@@ -2,24 +2,24 @@ Create a folder e.g., data_penn_fudan with Color, GroundTruth and feat_superpixe
 
 0. run feat_superpixel.m
 
-a. Prepare dataset and 3rd party softwares
+a. Prepare dataset and 3rd party softwares (OpenCV and VLFeat)
 
 b. run startup_penn_fudan.m  
 	
 c. generate texture features (64 texton features for node, + 64 LAB color features = 128 dim features)
 
-	- run generate_textures_pf.m (don't use too many images for generating textons, do need more 6GB usually)
+	- run generate_textures_pf.m (don't use too many images for generating textons, do need more than 6GB usually)
 
-d. generate Pb features (for edge features)
+d. generate Pb features (for edge features, optional)
 
 	- run generate_PB.m
 
-e. generate the rest of the features
+e. generate the rest of the features (in data_penn_fudan/parts_spseg_features/)
 
 	- compile generate_features.cpp (NOTE : This code requires OpenCV)
 		g++ generate_features.cpp -o generate_features `pkg-config --libs --cflags opencv` -g
 	- run drive_feats.pl.  This is just a wrapper to generate_features.cpp.  This wrapper may be easier to work with since generate_features.cpp requires many input parameters.
 
-f. run saveNodeFeatures2mat.m 
+f. run saveNodeFeatures2mat.m to convert superpixel features to .mat file (in data_penn_fudan/feat_superpixels/)
 
-g. go to ../RNN/code/ to run prePrepareFeatureAndSave() from trainVRNN_XXX.m to get allData
+g. run preProData_XXX.m to get allData (stored in feat_superpixels/)

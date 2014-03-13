@@ -9,7 +9,7 @@ rand('state',0) ;
 % figure(1) ; clf ;
 
 rt_path = '/home/hushell/working/deep/datasets/pedestrian_parsing/Color/';
-save_path = '/home/hushell/working/deep/datasets/pedestrian_parsing/feat_superpixel/';
+save_path = '/home/hushell/working/deep/datasets/pedestrian_parsing/feat_superpixels/';
 files = dir(rt_path);
 images = cell(length(files)-2,1);
 for j = 3:length(files)
