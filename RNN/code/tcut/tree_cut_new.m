@@ -58,23 +58,24 @@ end
 
 %% counts of pixel for each subtree
 % USE counts (GT)
-csp = imgData.labelCountsPerSP; 
+% csp = imgData.labelCountsPerSP; 
 % USE conditional likelihood
-%csp = imgTreeTop.catOut(:,1:numLeafNodes)' .* repmat(imgData.numPixelInSP, 1, n_labs);
+csp = imgTreeTop.catOut(:,1:numLeafNodes)' .* repmat(imgData.numPixelInSP, 1, n_labs);
+%csp = imgTreeTop.catOut(:,1:numLeafNodes)';
 count_csp = sum(csp,2);
 
-% compute likelihood for each superpixel
-% USE P(Y_j | z_j) = nml * Y_jz log(theta_plus / theta_minus) + \sum_{k} Y_jk log(theta_minus)
-theta_minus = (1 - theta_plus) ./ (n_labs - 1);
-l_theta_plus = log(theta_plus);
-l_theta_minus = log(theta_minus);
-l_theta_diff = l_theta_plus - l_theta_minus;
-
-% factorial(n) = gamma(n+1), nml = n!/(x_1!...x_n!)
-nml = gammaln(sum(csp,2)+1)-sum(gammaln(csp+1),2);
-csp = csp .* repmat(l_theta_diff, numLeafNodes, 1) ...
-    + repmat(count_csp,1,n_labs) .* repmat(l_theta_minus, numLeafNodes, 1) ...
-    + repmat(nml,1,n_labs);
+% % compute likelihood for each superpixel
+% % USE P(Y_j | z_j) = nml * Y_jz log(theta_plus / theta_minus) + \sum_{k} Y_jk log(theta_minus)
+% theta_minus = (1 - theta_plus) ./ (n_labs - 1);
+% l_theta_plus = log(theta_plus);
+% l_theta_minus = log(theta_minus);
+% l_theta_diff = l_theta_plus - l_theta_minus;
+% 
+% % factorial(n) = gamma(n+1), nml = n!/(x_1!...x_n!)
+% nml = gammaln(sum(csp,2)+1)-sum(gammaln(csp+1),2);
+% csp = csp .* repmat(l_theta_diff, numLeafNodes, 1) ...
+%     + repmat(count_csp,1,n_labs) .* repmat(l_theta_minus, numLeafNodes, 1) ...
+%     + repmat(nml,1,n_labs);
 
 %% bottom-up phase: Q(t) 
 q = zeros(numTotalNodes, n_labs); % max likelihood
