@@ -22,4 +22,6 @@ e. generate the rest of the features (in data_penn_fudan/parts_spseg_features/)
 
 f. run saveNodeFeatures2mat.m to convert superpixel features to .mat file (in data_penn_fudan/feat_superpixels/)
 
-g. run preProData_XXX.m to get allData (stored in feat_superpixels/)
+g. run preProData_XXX.m to get allData (stored in data_XXX/allInMatlab/, need to manually create this folder)
+
+h. final .mat files are in feat_superpixels/
