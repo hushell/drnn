@@ -58,28 +58,28 @@ end
 
 %% counts of pixel for each subtree
 % USE counts (GT)
-% csp = imgData.labelCountsPerSP; 
+csp = imgData.labelCountsPerSP; 
 % USE conditional likelihood
-csp = imgTreeTop.catOut(:,1:numLeafNodes)' .* repmat(imgData.numPixelInSP, 1, n_labs);
+%csp = imgTreeTop.catOut(:,1:numLeafNodes)' .* repmat(imgData.numPixelInSP, 1, n_labs);
 %csp = imgTreeTop.catOut(:,1:numLeafNodes)';
 count_csp = sum(csp,2);
 
-% % compute likelihood for each superpixel
-% % USE P(Y_j | z_j) = nml * Y_jz log(theta_plus / theta_minus) + \sum_{k} Y_jk log(theta_minus)
-% theta_minus = (1 - theta_plus) ./ (n_labs - 1);
-% l_theta_plus = log(theta_plus);
-% l_theta_minus = log(theta_minus);
-% l_theta_diff = l_theta_plus - l_theta_minus;
-% 
-% % factorial(n) = gamma(n+1), nml = n!/(x_1!...x_n!)
-% nml = gammaln(sum(csp,2)+1)-sum(gammaln(csp+1),2);
-% csp = csp .* repmat(l_theta_diff, numLeafNodes, 1) ...
-%     + repmat(count_csp,1,n_labs) .* repmat(l_theta_minus, numLeafNodes, 1) ...
-%     + repmat(nml,1,n_labs);
+% compute likelihood for each superpixel
+% USE P(Y_j | z_j) = nml * Y_jz log(theta_plus / theta_minus) + \sum_{k} Y_jk log(theta_minus)
+theta_minus = (1 - theta_plus) ./ (n_labs - 1);
+l_theta_plus = log(theta_plus);
+l_theta_minus = log(theta_minus);
+l_theta_diff = l_theta_plus - l_theta_minus;
+
+% factorial(n) = gamma(n+1), nml = n!/(x_1!...x_n!)
+nml = gammaln(sum(csp,2)+1)-sum(gammaln(csp+1),2);
+lik = csp .* repmat(l_theta_diff, numLeafNodes, 1) ... % Y_jz log(theta_plus / theta_minus
+    + repmat(count_csp,1,n_labs) .* repmat(l_theta_minus, numLeafNodes, 1) ... % \sum_{k} Y_jk log(theta_minus)
+    + repmat(nml,1,n_labs); % log(nml)
 
 %% bottom-up phase: Q(t) 
 q = zeros(numTotalNodes, n_labs); % max likelihood
-q(1:numLeafNodes,:) = csp;
+q(1:numLeafNodes,:) = lik;
 
 % track decisions, values range from 1: merge; 2: cutL; 3: cutR
 cut_at = zeros(numTotalNodes,n_labs); 
@@ -98,8 +98,10 @@ fprintf('p: %f, prior_merge = %f, prior_cut = %f, diff = %f\n', ...
     p_connect, prior_merge, prior_cut, prior_merge-prior_cut);
   
 % for finding PR
-q_max_diff = zeros(1,numTotalNodes-numLeafNodes);
-q_max_diff_ind = numLeafNodes+1:numTotalNodes;
+%q_max_diff = zeros(1,numTotalNodes-numLeafNodes);
+%q_max_diff_ind = numLeafNodes+1:numTotalNodes;
+q_max_diff = [];
+q_max_diff_ind = [];
 
 % DP loop
 for j = numLeafNodes+1:numTotalNodes
@@ -121,20 +123,24 @@ for j = numLeafNodes+1:numTotalNodes
     q_all = [q_merge; q_cutL; q_cutR];
     [q(j,:), cut_at(j,:)] = max(q_all); % for each state, see which decision maximize Q
     
-    fprintf('------------ node %d -------------\n', j);
-    
-    fprintf('q_L %d = \n', L); disp(q(L,:));
-    fprintf('q_R %d = \n', R); disp(q(R,:));
+    if vis
+      fprintf('------------ node %d -------------\n', j);
 
-    fprintf('q_j %d = \n', j); disp(q(j,:));
-    fprintf('cut_at_where %d = \n', j); disp(cut_at(j,:));
+      fprintf('q_L %d = \n', L); disp(q(L,:));
+      fprintf('q_R %d = \n', R); disp(q(R,:));
+
+      fprintf('q_j %d = \n', j); disp(q(j,:));
+      fprintf('cut_at_where %d = \n', j); disp(cut_at(j,:));
+    end
     
-    q_max_diff(j-numLeafNodes) = max(max(q_all(2:end,:))) - max(q_all(1,:));
+    %q_max_diff(j-numLeafNodes) = max(max(q_all(2:end,:))) - max(q_all(1,:));
+    q_diff = max(q_all(2:end,:)) - q_all(1,:);
+    q_max_diff = [q_max_diff q_diff(q_diff > 0)];
 end
 
 if p_connect < 0
     [q_max_diff, tmp_ind] = sort(q_max_diff);
-    q_max_diff_ind = q_max_diff_ind(tmp_ind);
+    %q_max_diff_ind = q_max_diff_ind(tmp_ind);
 end
 
 %% top down decoding
@@ -167,10 +173,11 @@ end
 labs = pred_labs;
 cuts = cut_if;
 %Q = max(q,[],2);
-Q = csp(1:numLeafNodes, pred_labs);
+qind = sub2ind(size(q),1:numel(pred_labs),pred_labs');
+Q = q(qind);
 
 if vis
-    figure(p_connect*100000);
+    figure(p_connect*100000+1);
     %figure(100);
     colorImgWithLabels_vlfeat(imgData.segs2,imgData.labels,pred_labs,...
             imgData.segLabels, imgData.img);
@@ -180,7 +187,7 @@ if vis
         sp_map(imgData.segs2 == i) = forest(i);
     end
 
-    figure(p_connect*100000+1);
+    figure(p_connect*100000+2);
     %figure(101);
     imagesc(sp_map);
     title(sprintf('There are %d segments (subtrees) in the forest', sum(cut_if)));
