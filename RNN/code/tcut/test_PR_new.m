@@ -1,7 +1,8 @@
 % test PR
 vis = 1;
-vtree = 0;
+vtree = 1;
 dense = 0;
+%name = [];
 
 addpath ../
 load ../../output/iccv09-1_fullParams_hid50_PTC0.0001_fullC0.0001_L0.05_good.mat
@@ -51,17 +52,21 @@ for i = 1:length(allData)
       p_samples = linspace(0,1,20);
     end
     
-    name = ['iccv09/iccv09_' num2str(i) '_'];
-    [PRs,spAccs,nCuts] = evalSegPerImg(name, @tree_cut_new, allData{i}, allTrees{i}, theta_plus, 8, p_samples,0,1);
+    if vis && vtree
+      name = ['iccv09/iccv09_' num2str(i) '_'];
+    end
+    
+    [PRs,spAccs,nCuts,PRs3,GCEs,VIs] = evalSegPerImg(name, @tree_cut_new, allData{i}, allTrees{i}, theta_plus, 8, p_samples,vis,vtree);
+    combo = (PRs.*spAccs.*PRs3) ./ (nCuts.*(VIs+1e-5));
     %[peak,loc] = max(PRs);
-    [peak,loc] = fullmax(PRs);
+    [peak,loc] = fullmax(combo);
     [mnc,mmi] = min(nCuts(loc));
     PR_peaks(i) = peak(mmi);
     SPAccsMax(i) = max(spAccs);
 
-    fprintf('>>>>>> image %d: best PR value = %f at %f\n', i, peak(mmi), p_samples(loc(mmi)));
+    fprintf('>>>>>> image %d: best combo value = %f at %f\n', i, peak(mmi), p_samples(loc(mmi)));
     fprintf('------ forest: number of subtrees = %d\n', mnc);
-    if (vis)
-        %pause
+    if vis && isempty(name)
+        pause
     end
 end

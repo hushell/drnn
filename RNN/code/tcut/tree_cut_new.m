@@ -88,6 +88,9 @@ cut_at = zeros(numTotalNodes,n_labs);
 if p_connect < 0
     prior_merge = 0;
     prior_cut = 0;
+elseif p_connect == 0
+    prior_merge = -Inf;
+    prior_cut = 0;
 else
     const1 = 1;
     prior_merge = log(p_connect) + log(p_connect); prior_merge = prior_merge * const1;

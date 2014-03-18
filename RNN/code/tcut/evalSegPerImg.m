@@ -1,4 +1,5 @@
-function [PRs,spErrs,nCuts] = evalSegPerImg(name, tree_cut_func, imgData, imgTreeTop, theta_plus, n_labs, lamb_samples, vis, vtree)
+function [PRs,spErrs,nCuts,PRs3,GCEs,VIs] = evalSegPerImg(...
+  name, tree_cut_func, imgData, imgTreeTop, theta_plus, n_labs, lamb_samples, vis, vtree)
 % evaluation segmentation per image, try different p_connect
 
 if nargin < 8
@@ -33,8 +34,10 @@ GCEs = zeros(size(lamb_samples));
 VIs = zeros(size(lamb_samples));
 nCuts = zeros(size(lamb_samples));
 PRs2 = zeros(size(lamb_samples));
+PRs3 = zeros(size(lamb_samples));
 PASCALs = zeros(size(lamb_samples));
 spErrs = zeros(size(lamb_samples));
+combo = zeros(size(lamb_samples));
 
 % get SP GT
 for i = 1:length(imgData.segLabels)
@@ -95,15 +98,20 @@ for lambda = lamb_samples
         colorCat(imgData.segs2 == i) = labels(i);
         forestLabels(imgData.segs2 == i) = forest(i);
     end
+    connectCompGT = connectCompGT + 1;
     [PRs(j), GCEs(j), VIs(j)] = compare_segmentations(forestLabels, connectCompGT);
-    %[PRs2(j), ~] = match_segmentations2(colorCat, {connectCompGT});
-    %PASCALs(j) = match_segmentations(colorCat, {connectCompGT});
+    %[PRs2(j), ~] = match_segmentations2(forestLabels, {connectCompGT});
+    [PRs3(j)] = adjrand(forestLabels(:), connectCompGT(:));
+    %PASCALs(j) = match_segmentations({colorCat}, {spLabelGT});
     spErrs(j) = sum(labels == imgData.segLabels) / length(labels);
+    
+    combo(j) = (PRs(j).*spErrs(j).*PRs3(j)) ./ (nCuts(j).*(VIs(j)+1e-5));
  
     if vis == 1
         vl_tightsubplot(numel(lamb_samples)+3,r,'box','outer'); 
         %imagesc(colorCat); title(sprintf('p = %f', lambda));
-        imagesc(forestLabels); title(sprintf('p = %.5f, PR = %.5f', lambda, PRs(j)));
+        %imagesc(forestLabels); title(sprintf('p = %.5f, PR = %.5f', lambda, PRs(j)));
+        imagesc(forestLabels); title(sprintf('p = %.5f, all = %.5f', lambda, combo(j)));
         axis off
         r = r + 1;
     end
@@ -112,13 +120,13 @@ end
 fprintf('------ GT: number of Connected Component = %d\n', numel(unique(connectCompGT)));
 
 if vtree
-  [peak,loc] = fullmax(PRs);
+  [peak,loc] = fullmax(combo);
   [mnc,mmi] = min(nCuts(loc));
   [Q,cuts,labs,forest] = tree_cut_func(imgData, imgTreeTop, theta_plus, n_labs, lamb_samples(loc(mmi)));
   ht = figure(103); 
   imgTreeTop.plotForest(forest); 
   set(ht, 'Position', get(0,'Screensize'));
-  title([name ': num(forest) = ' num2str(length(unique(forest)))]);
+  title([name(1:6) ': num(forest) = ' num2str(length(unique(forest)))]);
   export_fig([name '_forest'], '-eps')
 end
 
@@ -129,11 +137,14 @@ if vis == 1
       export_fig([name '_vis'], '-eps')
     end
     figure(101);
-    subplot(2,3,1); plot(lamb_samples, PRs, '-go', 'linewidth', 2); legend('PR');
+    subplot(2,3,1); plot(lamb_samples, PRs, '-go', 'linewidth', 2); legend('RI');
     subplot(2,3,2); plot(lamb_samples, GCEs, '-bo', 'linewidth', 2); legend('GCE');
     subplot(2,3,3); plot(lamb_samples, VIs, '-ro', 'linewidth', 2); legend('VI');
     subplot(2,3,4); plot(lamb_samples, spErrs, '-ro', 'linewidth', 2); legend('spAcc');
     subplot(2,3,5); plot(lamb_samples, nCuts, '-bo', 'linewidth', 2); legend('nCuts');
+    subplot(2,3,6); plot(lamb_samples, combo, '-go', 'linewidth', 2); legend('all');
+    %subplot(2,3,6); plot(lamb_samples, PRs3, '-go', 'linewidth', 2); legend('ARI');
+    %subplot(2,3,6); plot(lamb_samples, PASCALs, '-go', 'linewidth', 2); legend('SC');
     if ~isempty(name)
       h101 = figure(101);
       set(h101, 'Position', get(0,'Screensize'));
