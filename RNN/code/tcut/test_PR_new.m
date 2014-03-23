@@ -1,8 +1,7 @@
 % test PR
-vis = 1;
-vtree = 1;
+vis = 0;
+vtree = 0;
 dense = 0;
-%name = [];
 
 addpath ../
 load ../../output/iccv09-1_fullParams_hid50_PTC0.0001_fullC0.0001_L0.05_good.mat
@@ -35,6 +34,7 @@ theta_plus = MLE_theta(allData,8);
 % for each image
 PR_peaks = zeros(1,length(allData));
 SPAccsMax = zeros(1,length(allData));
+p_connect_star = zeros(1,length(allData));
 for i = 1:length(allData)
     
     % get which p_connect will be used
@@ -54,6 +54,8 @@ for i = 1:length(allData)
     
     if vis && vtree
       name = ['iccv09/iccv09_' num2str(i) '_'];
+    else
+      name = [];
     end
     
     [PRs,spAccs,nCuts,PRs3,GCEs,VIs] = evalSegPerImg(name, @tree_cut_new, allData{i}, allTrees{i}, theta_plus, 8, p_samples,vis,vtree);
@@ -63,6 +65,7 @@ for i = 1:length(allData)
     [mnc,mmi] = min(nCuts(loc));
     PR_peaks(i) = peak(mmi);
     SPAccsMax(i) = max(spAccs);
+    p_connect_star(i) = p_samples(loc(mmi));
 
     fprintf('>>>>>> image %d: best combo value = %f at %f\n', i, peak(mmi), p_samples(loc(mmi)));
     fprintf('------ forest: number of subtrees = %d\n', mnc);

@@ -109,6 +109,7 @@ while newParentIndex<=numTotalSuperSegs
     thisTree.nodeNames(newParentIndex) = newParentIndex;
     thisTree.nodeFeatures(:,newParentIndex) = newSegHid;
     thisTree.nodeLabels(:,newParentIndex) = thisTree.nodeLabels(:,kids(1)) + thisTree.nodeLabels(:,kids(2));
+    thisTree.nodeScores(newParentIndex) = thisScore;
     
     % compute category/label activation of this new node
     thisTree.catAct(:,newParentIndex) = Wcat*[newSegHid ;1 ];
