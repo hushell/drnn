@@ -47,9 +47,64 @@ for i = 1:length(allData)
   [allQ{i},allcuts{i},alllabs{i},allforest{i}] = tree_cut_new(allData{i}, allTrees{i}, theta_plus, 8, p_connect_star(i));
 end
 
+%% marginal probs
+allMarginals = cell(1,length(allData));
+for i = 1:length(allData)
+  allMarginals{i} = allQ{i}';
+end
+
+%% structural features
+if exist('CCsUnder.mat', 'file')
+  load CCsUnder.mat
+else
+  allnumLeafsUnder = cell(1,length(allData));
+  allleafsUnder = cell(1,length(allData));
+  allCCsUnder = cell(1,length(allData));
+  nlabs = 8;
+  for i = 1:length(allData)
+    % leafs of each subtree
+    numLeafNodes = size(allData{i}.adj,1);
+    numTotalNodes = size(allTrees{i}.kids,1);
+    numLeafsUnder = ones(numLeafNodes,1);
+    leafsUnder = cell(numLeafNodes,1);
+    CCsUnder = ones(numTotalNodes,1);
+
+    for s = 1:numLeafNodes
+        leafsUnder{s} = s;
+    end
+
+    spLabelGT = zeros(size(allData{i}.segs2));
+    % get SP GT
+    for j = 1:length(allData{i}.segLabels)
+        spLabelGT(allData{i}.segs2 == j) = allData{i}.segLabels(j);
+    end
+
+    for n = numLeafNodes+1:numTotalNodes
+        kids = allTrees{i}.getKids(n);
+        numLeafsUnder(n) = numLeafsUnder(kids(1))+numLeafsUnder(kids(2));
+        leafsUnder{n} = [leafsUnder{kids(1)} leafsUnder{kids(2)}];
+
+        subSPGT = zeros(size(spLabelGT));
+        subIndex = logical(sum(bsxfun(@eq, allData{i}.segs2(:), leafsUnder{n}),2));
+        subSPGT(subIndex) = spLabelGT(subIndex);
+
+        for k = 1:nlabs
+          temp = bwlabel(subSPGT == k);
+          CCsUnder(n) = CCsUnder(n) + numel(unique(temp(temp > 0)));
+        end
+    end
+
+    allnumLeafsUnder{i} = numLeafsUnder;
+    allleafsUnder{i} = leafsUnder;
+    allCCsUnder{i} = CCsUnder;
+  end
+end
+
 %% get edge features, positive: cut, negative: non-cut
 
 ndim = size(allTrees{i}.nodeFeatures,1)*3+1;
+%ndim = size(allTrees{i}.catOut,1)*3+1+6;
+% ndim = 7;
 nedges = 30000;
 nclass = 2;
 edge_feats = zeros(ndim, nedges);
@@ -70,9 +125,24 @@ for i = 1:length(allTrees)
     sibling = sibling(sibling ~= c);
     fprintf('tree %d - cut %d\n', i, c);
     edge_feats(:,cnt) = [imgTree.nodeFeatures(:,c); imgTree.nodeFeatures(:,sibling); ...
-                        imgTree.nodeFeatures(:,par); ...
-                        imgTree.nodeScores(par)-minScore];
-    %edge_feats(:,cnt) = edge_feats(:,cnt) ./ norm(edge_feats(:,cnt));
+                       imgTree.nodeFeatures(:,par); ...
+                       imgTree.nodeScores(par)-minScore];
+    
+%     edge_feats(:,cnt) = [imgTree.catOut(:,c); imgTree.catOut(:,sibling); ...
+%                         imgTree.catOut(:,par); ...
+%                         imgTree.nodeScores(par)-minScore];
+
+%     edge_feats(:,cnt) = [allMarginals{i}(:,c); allMarginals{i}(:,sibling); ...
+%                         allMarginals{i}(:,par); ...
+%                         imgTree.nodeScores(par); ...
+%                         allCCsUnder{i}(c);allCCsUnder{i}(sibling);allCCsUnder{i}(par); ...
+%                         allnumLeafsUnder{i}(c);allnumLeafsUnder{i}(sibling);allnumLeafsUnder{i}(par)];
+%     edge_feats(:,cnt) = [
+%                         imgTree.nodeScores(par); ...
+%                         allCCsUnder{i}(c);allCCsUnder{i}(sibling);allCCsUnder{i}(par); ...
+%                         allnumLeafsUnder{i}(c);allnumLeafsUnder{i}(sibling);allnumLeafsUnder{i}(par)
+%                         ];                  
+%     edge_feats(:,cnt) = edge_feats(:,cnt) ./ norm(edge_feats(:,cnt));                  
     if allcuts{i}(c) 
       edge_labs(cnt) = 1;
     else
@@ -85,7 +155,7 @@ temp_edge_feats = edge_feats(:, 1:cnt-1);
 temp_edge_labs = edge_labs(:, 1:cnt-1);
 
 % select some negative samples to make LR balance
-stride = 5;
+stride = 1;
 % neg_cand = edge_labs == 0;
 % edge_feats = [temp_edge_feats(:,~neg_cand), temp_edge_feats(:,neg_cand)];
 % edge_labs = [temp_edge_labs(:,~neg_cand), temp_edge_labs(:,neg_cand)];
@@ -172,4 +242,4 @@ fprintf('lr: train error = %f\n', train_err);
 vlabs = test_labs;
 vlabs(vlabs == 0) = -1;
 figure; vl_pr(vlabs, pred);
-figure; vl_roc(vlabs, pred);
+figure; vl_roc(vlabs, pred, 'plot', 'fptp');

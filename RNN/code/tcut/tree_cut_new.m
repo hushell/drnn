@@ -177,7 +177,8 @@ labs = pred_labs;
 cuts = cut_if;
 %Q = max(q,[],2);
 qind = sub2ind(size(q),1:numel(pred_labs),pred_labs');
-Q = q(qind);
+%Q = q(qind);
+Q = q;
 
 if vis
     figure(p_connect*100000+1);
