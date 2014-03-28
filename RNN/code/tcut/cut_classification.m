@@ -100,11 +100,32 @@ else
   end
 end
 
+%% average raw features
+% allrawfeats = cell(1,length(allData));
+% for i = 1:length(allData)
+%   numLeafNodes = size(allData{i}.adj,1);
+%   numTotalNodes = size(allTrees{i}.kids,1);
+%   dimNodeFeats = size(allData{i}.feat2,2);
+%   rawfeats = zeros(dimNodeFeats, numTotalNodes);
+%   rawfeats(:,1:numLeafNodes) = allData{i}.feat2';
+%   for n = numLeafNodes+1:numTotalNodes
+%     kids = allTrees{i}.getKids(n);
+%     leavePar = allnumLeafsUnder{i}(n);
+%     leavekid1 = allnumLeafsUnder{i}(kids(1));
+%     leavekid2 = allnumLeafsUnder{i}(kids(2));
+%     assert(leavePar == leavekid1 + leavekid2);
+%     rawfeats(:,n) = leavekid1/leavePar .* rawfeats(:,kids(1)) + leavekid2/leavePar .* rawfeats(:,kids(2));
+%   end
+%   allrawfeats{i} = rawfeats;
+% end
+
 %% get edge features, positive: cut, negative: non-cut
 
-ndim = size(allTrees{i}.nodeFeatures,1)*3+1;
-%ndim = size(allTrees{i}.catOut,1)*3+1+6;
-% ndim = 7;
+% ndim = size(allTrees{i}.leafFeatures,2)*3+size(allTrees{i}.nodeFeatures,1)*3+size(allTrees{i}.catOut,1)*3+7;
+% ndim = size(allTrees{i}.catOut,1)*3+1;
+ndim = 7;
+% ndim = size(allTrees{i}.nodeFeatures,1)*3+size(allTrees{i}.catOut,1)*3+7;
+% ndim = size(allTrees{i}.leafFeatures,2)*3;
 nedges = 30000;
 nclass = 2;
 edge_feats = zeros(ndim, nedges);
@@ -124,25 +145,39 @@ for i = 1:length(allTrees)
     sibling = imgTree.kids(par,:);
     sibling = sibling(sibling ~= c);
     fprintf('tree %d - cut %d\n', i, c);
-    edge_feats(:,cnt) = [imgTree.nodeFeatures(:,c); imgTree.nodeFeatures(:,sibling); ...
-                       imgTree.nodeFeatures(:,par); ...
-                       imgTree.nodeScores(par)-minScore];
-    
+%     edge_feats(:,cnt) = [imgTree.nodeFeatures(:,c); ...
+%                        imgTree.nodeFeatures(:,par)]; % no normalization
+%     edge_feats(:,cnt) = [imgTree.nodeFeatures(:,c); imgTree.nodeFeatures(:,sibling); ...
+%                        imgTree.nodeFeatures(:,par); ...
+%                        imgTree.nodeScores(par)-minScore]; % no normalization
+%     edge_feats(:,cnt) = [imgTree.catOut(:,c); imgTree.catOut(:,sibling); ...
+%                         imgTree.catOut(:,par);];
 %     edge_feats(:,cnt) = [imgTree.catOut(:,c); imgTree.catOut(:,sibling); ...
 %                         imgTree.catOut(:,par); ...
-%                         imgTree.nodeScores(par)-minScore];
+%                         imgTree.nodeScores(par)];
 
 %     edge_feats(:,cnt) = [allMarginals{i}(:,c); allMarginals{i}(:,sibling); ...
 %                         allMarginals{i}(:,par); ...
 %                         imgTree.nodeScores(par); ...
 %                         allCCsUnder{i}(c);allCCsUnder{i}(sibling);allCCsUnder{i}(par); ...
 %                         allnumLeafsUnder{i}(c);allnumLeafsUnder{i}(sibling);allnumLeafsUnder{i}(par)];
-%     edge_feats(:,cnt) = [
+    edge_feats(:,cnt) = [imgTree.nodeScores(par); ...
+                        allCCsUnder{i}(c);allCCsUnder{i}(sibling);allCCsUnder{i}(par); ...
+                        allnumLeafsUnder{i}(c);allnumLeafsUnder{i}(sibling);allnumLeafsUnder{i}(par)
+                        ];
+%     edge_feats(:,cnt) = [imgTree.nodeFeatures(:,c); imgTree.nodeFeatures(:,sibling); ...
+%                        imgTree.nodeFeatures(:,par); ...
+%                        imgTree.catOut(:,c); imgTree.catOut(:,sibling); ...
+%                         imgTree.catOut(:,par); ...
+%                         %allrawfeats{i}(:,c); allrawfeats{i}(:,sibling); allrawfeats{i}(:,par); ...
 %                         imgTree.nodeScores(par); ...
 %                         allCCsUnder{i}(c);allCCsUnder{i}(sibling);allCCsUnder{i}(par); ...
 %                         allnumLeafsUnder{i}(c);allnumLeafsUnder{i}(sibling);allnumLeafsUnder{i}(par)
-%                         ];                  
-%     edge_feats(:,cnt) = edge_feats(:,cnt) ./ norm(edge_feats(:,cnt));                  
+%                         ];
+%     edge_feats(:,cnt) = [allrawfeats{i}(:,c); allrawfeats{i}(:,sibling); allrawfeats{i}(:,par)];
+
+    % normalization
+    edge_feats(:,cnt) = edge_feats(:,cnt) ./ norm(edge_feats(:,cnt));                  
     if allcuts{i}(c) 
       edge_labs(cnt) = 1;
     else
