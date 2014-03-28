@@ -85,20 +85,45 @@ q(1:numLeafNodes,:) = lik;
 cut_at = zeros(numTotalNodes,n_labs); 
 
 % compute prior_merge & prior_cut
-if p_connect < 0
-    prior_merge = 0;
-    prior_cut = 0;
-elseif p_connect == 0
-    prior_merge = -Inf;
-    prior_cut = 0;
+prior_merge = zeros(size(p_connect));
+prior_cut = zeros(size(p_connect));
+
+assert(all(p_connect <= 1));
+p_index_less = p_connect < 0;
+p_index_zero = p_connect == 0;
+p_index_else = p_connect > 0;
+
+% if p_connect < 0
+prior_merge(p_index_less) = 0;
+prior_cut(p_index_less) = 0;
+% if p_connect == 0
+prior_merge(p_index_zero) = -Inf;
+prior_cut(p_index_zero) = 0;
+% else
+prior_merge(p_index_else) = log(p_connect(p_index_else)) + log(p_connect(p_index_else));
+prior_cut(p_index_else) = log(p_connect(p_index_else)) + log(1-p_connect(p_index_else)) - log(n_labs);
+
+% if p_connect < 0
+%     prior_merge(:) = 0;
+%     prior_cut(:) = 0;
+% elseif p_connect == 0
+%     prior_merge(:) = -Inf;
+%     prior_cut(:) = 0;
+% else
+%     const1 = 1;
+%     prior_merge = log(p_connect) + log(p_connect); prior_merge = prior_merge .* const1;
+%     prior_cut = log(p_connect) + log(1-p_connect) - log(n_labs); prior_cut = prior_cut .* const1;
+%     %prior_cut = log(p_connect) + log(1-p_connect); prior_cut = prior_cut * const1 - log(n_labs);
+% end
+% fprintf('p: %f, prior_merge = %f, prior_cut = %f, diff = %f\n', ...
+%     p_connect, prior_merge, prior_cut, prior_merge-prior_cut);
+  
+if length(p_connect) == 1
+  prior_merge = repmat(prior_merge, 1, numTotalNodes);
+  prior_cut = repmat(prior_cut, 1, numTotalNodes);
 else
-    const1 = 1;
-    prior_merge = log(p_connect) + log(p_connect); prior_merge = prior_merge * const1;
-    prior_cut = log(p_connect) + log(1-p_connect) - log(n_labs); prior_cut = prior_cut * const1;
-    %prior_cut = log(p_connect) + log(1-p_connect); prior_cut = prior_cut * const1 - log(n_labs);
+  assert(length(p_connect) == numTotalNodes);
 end
-fprintf('p: %f, prior_merge = %f, prior_cut = %f, diff = %f\n', ...
-    p_connect, prior_merge, prior_cut, prior_merge-prior_cut);
   
 % for finding PR
 %q_max_diff = zeros(1,numTotalNodes-numLeafNodes);
@@ -119,9 +144,9 @@ for j = numLeafNodes+1:numTotalNodes
     %prior_merge = 0.1;
     %prior_cut = 0;
     
-    q_merge = q(L,:) + q(R,:) + prior_merge;
-    q_cutL = maxL + q(R,:) + prior_cut;
-    q_cutR = maxR + q(L,:) + prior_cut;
+    q_merge = q(L,:) + q(R,:) + prior_merge(L)/2 + prior_merge(R)/2;
+    q_cutL = maxL + q(R,:) + prior_cut(L);
+    q_cutR = maxR + q(L,:) + prior_cut(R);
     
     q_all = [q_merge; q_cutL; q_cutR];
     [q(j,:), cut_at(j,:)] = max(q_all); % for each state, see which decision maximize Q
