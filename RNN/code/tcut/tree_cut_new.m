@@ -141,12 +141,18 @@ for j = numLeafNodes+1:numTotalNodes
     %maxL = 0;
     %maxR = 0;
     
-    %prior_merge = 0.1;
-    %prior_cut = 0;
-    
-    q_merge = q(L,:) + q(R,:) + prior_merge(L)/2 + prior_merge(R)/2;
-    q_cutL = maxL + q(R,:) + prior_cut(L);
-    q_cutR = maxR + q(L,:) + prior_cut(R);
+    if length(p_connect) == 1
+      q_merge = q(L,:) + q(R,:) + prior_merge(L)/2 + prior_merge(R)/2;
+      q_cutL = maxL + q(R,:) + prior_cut(L);
+      q_cutR = maxR + q(L,:) + prior_cut(R);
+    else
+      p_m = log(p_connect(L)) + log(p_connect(R));
+      p_cL = log(p_connect(R)) + log(1-p_connect(L)) - log(n_labs);
+      p_cR = log(p_connect(L)) + log(1-p_connect(R)) - log(n_labs);
+      q_merge = q(L,:) + q(R,:) + p_m;
+      q_cutL = maxL + q(R,:) + p_cL;
+      q_cutR = maxR + q(L,:) + p_cR;
+    end
     
     q_all = [q_merge; q_cutL; q_cutR];
     [q(j,:), cut_at(j,:)] = max(q_all); % for each state, see which decision maximize Q

@@ -105,8 +105,8 @@ end
 train_index = 1:2:length(allTrees);
 test_index = 2:2:length(allTrees);
 
-ndim = 7;
-% ndim = size(allTrees{i}.nodeFeatures,1)*3+size(allTrees{i}.catOut,1)*3+7;
+% ndim = 7;
+ndim = size(allTrees{i}.nodeFeatures,1)*3+size(allTrees{i}.catOut,1)*3+7;
 nedges = 30000;
 nclass = 2;
 
@@ -131,10 +131,19 @@ for i = train_index
     sibling = sibling(sibling ~= c);
     fprintf('tree %d - cut %d\n', i, c);
 
-    edge_feats(:,cnt) = [imgTree.nodeScores(par); ...
+%     edge_feats(:,cnt) = [imgTree.nodeScores(par); ...
+%                         allCCsUnder{i}(c);allCCsUnder{i}(sibling);allCCsUnder{i}(par); ...
+%                         allnumLeafsUnder{i}(c);allnumLeafsUnder{i}(sibling);allnumLeafsUnder{i}(par)
+%                         ];
+    edge_feats(:,cnt) = [imgTree.nodeFeatures(:,c); imgTree.nodeFeatures(:,sibling); ...
+                       imgTree.nodeFeatures(:,par); ...
+                       imgTree.catOut(:,c); imgTree.catOut(:,sibling); ...
+                        imgTree.catOut(:,par); ...
+                        %allrawfeats{i}(:,c); allrawfeats{i}(:,sibling); allrawfeats{i}(:,par); ...
+                        imgTree.nodeScores(par); ...
                         allCCsUnder{i}(c);allCCsUnder{i}(sibling);allCCsUnder{i}(par); ...
                         allnumLeafsUnder{i}(c);allnumLeafsUnder{i}(sibling);allnumLeafsUnder{i}(par)
-                        ];
+                        ];                  
 
     % normalization
     edge_feats(:,cnt) = edge_feats(:,cnt) ./ norm(edge_feats(:,cnt));                  
@@ -188,11 +197,20 @@ for i = test_index
     sibling = sibling(sibling ~= c);
     fprintf('tree %d - cut %d\n', i, c);
 
-    edge_feats(:,cnt) = [imgTree.nodeScores(par); ...
+%     edge_feats(:,cnt) = [imgTree.nodeScores(par); ...
+%                         allCCsUnder{i}(c);allCCsUnder{i}(sibling);allCCsUnder{i}(par); ...
+%                         allnumLeafsUnder{i}(c);allnumLeafsUnder{i}(sibling);allnumLeafsUnder{i}(par)
+%                         ];
+    edge_feats(:,cnt) = [imgTree.nodeFeatures(:,c); imgTree.nodeFeatures(:,sibling); ...
+                       imgTree.nodeFeatures(:,par); ...
+                       imgTree.catOut(:,c); imgTree.catOut(:,sibling); ...
+                        imgTree.catOut(:,par); ...
+                        %allrawfeats{i}(:,c); allrawfeats{i}(:,sibling); allrawfeats{i}(:,par); ...
+                        imgTree.nodeScores(par); ...
                         allCCsUnder{i}(c);allCCsUnder{i}(sibling);allCCsUnder{i}(par); ...
                         allnumLeafsUnder{i}(c);allnumLeafsUnder{i}(sibling);allnumLeafsUnder{i}(par)
-                        ];
-
+                        ]; 
+                      
     % normalization
     edge_feats(:,cnt) = edge_feats(:,cnt) ./ norm(edge_feats(:,cnt));                  
     if allcuts{i}(c) 
@@ -270,11 +288,20 @@ for i = 1:length(allData)
     sibling = sibling(sibling ~= c);
     fprintf('tree %d - cut %d\n', i, c);
 
-    edge_feats(:,c) = [imgTree.nodeScores(par); ...
+%     edge_feats(:,c) = [imgTree.nodeScores(par); ...
+%                         allCCsUnder{i}(c);allCCsUnder{i}(sibling);allCCsUnder{i}(par); ...
+%                         allnumLeafsUnder{i}(c);allnumLeafsUnder{i}(sibling);allnumLeafsUnder{i}(par)
+%                         ];
+    edge_feats(:,c) = [imgTree.nodeFeatures(:,c); imgTree.nodeFeatures(:,sibling); ...
+                       imgTree.nodeFeatures(:,par); ...
+                       imgTree.catOut(:,c); imgTree.catOut(:,sibling); ...
+                        imgTree.catOut(:,par); ...
+                        %allrawfeats{i}(:,c); allrawfeats{i}(:,sibling); allrawfeats{i}(:,par); ...
+                        imgTree.nodeScores(par); ...
                         allCCsUnder{i}(c);allCCsUnder{i}(sibling);allCCsUnder{i}(par); ...
                         allnumLeafsUnder{i}(c);allnumLeafsUnder{i}(sibling);allnumLeafsUnder{i}(par)
-                        ];
-
+                        ]; 
+                      
     % normalization
     edge_feats(:,c) = edge_feats(:,c) ./ norm(edge_feats(:,c));  
     
@@ -317,11 +344,11 @@ maxCuts_pred = max(totNumCuts_pred);
 
 tot_index_same = totNumCuts == totNumCuts_pred;
 
-figure; scatter(totNumCCs, totNumCuts, 'filled'); xlabel('Number of CCs'); ylabel('Number of Cuts');
-hold on; line(1:max(maxCCs,maxCuts), 1:max(maxCCs,maxCuts), 'Color','g', 'LineStyle', '--', 'LineWidth', 2);
-figure; scatter(totNumCCs(tot_index_same), totNumCuts_pred(tot_index_same), 'filled', 'b'); xlabel('Number of CCs'); ylabel('Number of Cuts');
-hold on; scatter(totNumCCs(~tot_index_same), totNumCuts_pred(~tot_index_same), 'filled', 'r'); xlabel('Number of CCs'); ylabel('Number of Cuts');
-hold on; line(1:max(maxCCs,maxCuts_pred), 1:max(maxCCs,maxCuts_pred), 'Color','g', 'LineStyle', '--', 'LineWidth', 2);
+% figure; scatter(totNumCCs, totNumCuts, 'filled'); xlabel('Number of CCs'); ylabel('Number of Cuts');
+% hold on; line(1:max(maxCCs,maxCuts), 1:max(maxCCs,maxCuts), 'Color','g', 'LineStyle', '--', 'LineWidth', 2);
+% figure; scatter(totNumCCs(tot_index_same), totNumCuts_pred(tot_index_same), 'filled', 'b'); xlabel('Number of CCs'); ylabel('Number of Cuts');
+% hold on; scatter(totNumCCs(~tot_index_same), totNumCuts_pred(~tot_index_same), 'filled', 'r'); xlabel('Number of CCs'); ylabel('Number of Cuts');
+% hold on; line(1:max(maxCCs,maxCuts_pred), 1:max(maxCCs,maxCuts_pred), 'Color','g', 'LineStyle', '--', 'LineWidth', 2);
 
 %% PR value comparison
 vis = 0;
@@ -337,7 +364,7 @@ for i = 1:length(allData)
       name = [];
     end
     
-    [PRs,spAccs,nCuts,PRs3,GCEs,VIs] = evalSegPerImg3(name, @tree_cut_new, allData{i}, allTrees{i}, theta_plus, 8, allppred{i},vis,vtree);
+    [PRs,spAccs,nCuts,PRs3,GCEs,VIs] = evalSegPerImg3(name, @tree_cut_new, allData{i}, allTrees{i}, theta_plus, 8, p_connect_star(i),vis,vtree);
 
     PR_peaks(i) = PRs;
     SPAccsMax(i) = max(spAccs);
@@ -359,7 +386,7 @@ for i = 1:length(allData)
       name = [];
     end
     
-    [PRs,spAccs,nCuts,PRs3,GCEs,VIs] = evalSegPerImg3(name, @tree_cut_new, allData{i}, allTrees{i}, theta_plus, 8, p_connect_star(i),vis,vtree);
+    [PRs,spAccs,nCuts,PRs3,GCEs,VIs] = evalSegPerImg3(name, @tree_cut_new, allData{i}, allTrees{i}, theta_plus, 8, allppred{i},vis,vtree);
     
     PR_peaks_pred(i) = PRs;
     SPAccsMax_pred(i) = max(spAccs);
@@ -380,3 +407,8 @@ figure; scatter(PR_peaks, PR_peaks_pred, 'filled'); xlabel('PRs Global'); ylabel
 hold on; line([min_PR max_PR], [min_PR max_PR], 'Color','g', 'LineStyle', '--', 'LineWidth', 2);
 figure; scatter(SPAccsMax, SPAccsMax_pred, 'filled', 'b'); xlabel('SP Accuracy Global'); ylabel('SP Accuracy local');
 hold on; line([min_Acc max_Acc], [min_Acc max_Acc], 'Color','g', 'LineStyle', '--', 'LineWidth', 2);
+
+mean(PR_peaks)
+mean(PR_peaks_pred)
+mean(SPAccsMax)
+mean(SPAccsMax_pred)
