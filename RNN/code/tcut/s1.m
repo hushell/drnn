@@ -3,7 +3,7 @@ vis = 1;
 addpath ../
 load ../../output/iccv09-1_fullParams_hid50_PTC0.0001_fullC0.0001_L0.05_good.mat
 load ../../data/iccv09-allData-eval.mat
-run('~/working/deep/vlfeat-0.9.16/toolbox/vl_setup.m');
+run('/scratch/working/softwares/vlfeat-0.9.16/toolbox/vl_setup.m');
 
 theta_plus = MLE_theta(allData,8);
 

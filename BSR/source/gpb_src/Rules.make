@@ -49,7 +49,7 @@ CXX_LDFLAGS := $(CXX_FLAGS) $(CXX_LINK)
 
 # matlab mex file compilation settings - matlab path
 #MATLAB_PATH := /Applications/MATLAB_R2010a.app/
-MATLAB_PATH := /usr/local/MATLAB/R2013a/
+MATLAB_PATH := /scratch/sth/matlab2011b/
 
 # matlab mex file compilation settings - matlab architecture (32-bit machines)
 #MATLAB_ARCH := glnx86
