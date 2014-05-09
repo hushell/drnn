@@ -10,12 +10,12 @@ addpath ~/working/deep/netlab3_3/
 load ~/working/deep/chris_netlab_code/dat119_iccv09.mat
 
 %% training
-classifier = 0.5;
+classifier = 2;
 nclass = 8;
 D = size(X,2);
 
 if classifier == 2
-  ncentres = 5;
+  ncentres = 1;
   input_dim = D;
 
   nets = cell(1,nclass);
@@ -35,6 +35,7 @@ if classifier == 2
 
     [mix, options, errlog] = gmmem(mix, data, options);
     nets{i} = mix;
+    save gmm_119_iccv09.mat nets
   end
 elseif classifier == 0
   net = glm(D, nclass, 'softmax');

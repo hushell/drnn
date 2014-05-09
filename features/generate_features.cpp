@@ -57,7 +57,7 @@ void computeNodeFeatures(string s, int hh, int ww, int **mat, int numSP,
 			 vector<vector<float> > &meanLab, vector<vector<float> > &texthists,
 			 ofstream *outfile, float **clusters, int neiMode);
 // Compute Edge features
-void computeEdgeFeatures(string s, int n, int **mat, int numSP, 
+void computeEdgeFeatures(string s, int hh, int ww, int **mat, int numSP, 
 			 vector<vector<float> > &meanLab, vector<vector<float> > &texthists,
 			 ofstream *outfile);
 
@@ -71,7 +71,7 @@ int readSuperpixel(char *fn, int **&mat, int hh, int ww);
 void writeSuperpixel(char *fn, int **mat, int hh, int ww, int numSP);
 
 // Read the probability of boundary data 
-void readpb(char *fn, float **&vals);
+void readpb(char *fn, float **&vals, int hh, int ww);
 
 // Compute distance between 2 vectors
 float dist(vector<float> a, vector<float> b);
@@ -312,7 +312,8 @@ int main(int argc, char* argv[])
 
 		//cout << "DEBUG 2\n";
 		//sprintf(fn, "%s/%s_spfeat.dat", spseg_features_dir.c_str(), s.c_str());     
-		sprintf(fn, "%s/%s_spfn1p.dat", spseg_features_dir.c_str(), s.c_str());     
+		//sprintf(fn, "%s/%s_spfn1p.dat", spseg_features_dir.c_str(), s.c_str());     
+		sprintf(fn, "%s/%s_spedge.dat", spseg_features_dir.c_str(), s.c_str());     
 		ofstream outfile(fn);
 		if(!outfile.is_open())
 		{
@@ -329,7 +330,7 @@ int main(int argc, char* argv[])
 		
 		//cout << "DEBUG 3\n";
 		computeNodeFeatures(s, hh, ww, mat, numSP, meanLab, texthists, &outfile, clusters, 1);
-		//computeEdgeFeatures(s, n, mat, numSP, meanLab, texthists, &outfile);
+		computeEdgeFeatures(s, hh, ww, mat, numSP, meanLab, texthists, &outfile);
 		//computeGTppm(s, n, mat, numSP);
 
 		//cout << "DEBUG 4\n";
@@ -577,6 +578,7 @@ void computeNodeFeatures(string s, int hh, int ww,
 	(*outfile) << endl;
 
 	texin.close();
+    printf("End computeNodeFeatures!\n");
 }
 
 /*   
@@ -590,7 +592,7 @@ void computeNodeFeatures(string s, int hh, int ww,
    % outfile : 	feature file 
 */
   
-void computeEdgeFeatures(string s, int n, int **mat, int numSP, 
+void computeEdgeFeatures(string s, int hh, int ww, int **mat, int numSP, 
 			 vector<vector<float> > &meanLab, 
 			 vector<vector<float> > &texthists, ofstream *outfile)
 {
@@ -606,61 +608,67 @@ void computeEdgeFeatures(string s, int n, int **mat, int numSP,
   //Retrieve the Probability of Boundary feature
   char fn[1024];
 
-  sprintf(fn, "%s/%s/%s_%04d.emag_thick.txt", pb_dir.c_str(), s.c_str(), s.c_str(), n);  
+  //sprintf(fn, "%s/%s/%s_%04d.emag_thick.txt", pb_dir.c_str(), s.c_str(), s.c_str(), n);  
+  sprintf(fn, "%s/%s_pb.txt", pb_dir.c_str(), s.c_str());  
   
   float **vals;
-  vals = new float*[iheight];
-  for(int i=0; i<iheight; i++)
-    vals[i] = new float[iwidth];
+  vals = new float*[hh];
+  for(int i=0; i<hh; i++)
+    vals[i] = new float[ww];
 
   //this returns PB of whether there is a boundary at img[i][j]
-  readpb(fn, vals);
+  readpb(fn, vals, hh, ww);
+
+  printf("finished reading %s\n", fn);
   
-  for(int i=0; i<iheight-1; i++)
-    {
-      for(int j=0; j<iwidth-1; j++)
+  for(int i=0; i<hh-1; i++)
+  {
+    for(int j=0; j<ww-1; j++)
 	{
 	  if(mat[i][j] != mat[i+1][j])
-	    {
-	      float val = (vals[i][j] + vals[i+1][j]);
+	  {
+		 float val = (vals[i][j] + vals[i+1][j]);
+	   	 //printf("val = %f\n", val);
 
-	      //impose an ordering
-	      pair<int, int> p(min(mat[i][j], mat[i+1][j]), max(mat[i][j], mat[i+1][j]));
-	      if(foundEdges.find(p) == foundEdges.end())
-		{
-		  foundEdges[p] = instanceEdges.size(); // give an id to this edge (sp1, sp2) 
-		  instanceEdges.push_back(p);
-		  edgeFeatures.push_back(val);
-		  bT.push_back(1);
-		}
-	      else
-		{
-		  edgeFeatures[foundEdges[p]] += val;
-		  bT[foundEdges[p]]++; 
-		}
-	    }
+	   	 //impose an ordering
+	   	 pair<int, int> p(min(mat[i][j], mat[i+1][j]), max(mat[i][j], mat[i+1][j]));
+	   	 if(foundEdges.find(p) == foundEdges.end())
+		 {	
+			 //printf("Found a new edge: (%d,%d)\n", p.first, p.second);
+	  	  	 foundEdges[p] = instanceEdges.size(); // give an id to this edge (sp1, sp2) 
+	  	  	 instanceEdges.push_back(p);
+	  	  	 edgeFeatures.push_back(val);
+	  	  	 bT.push_back(1);
+	  	 }	
+	   	 else
+	  	 {	
+	  	  	 edgeFeatures[foundEdges[p]] += val;
+	  	  	 bT[foundEdges[p]]++; 
+	  	 }	
+	  }
 	  if(mat[i][j] != mat[i][j+1])
-	    {
-	      float val = (vals[i][j] + vals[i][j+1]);
+	  {
+	   	 float val = (vals[i][j] + vals[i][j+1]);
 
-	      pair<int, int> p(min(mat[i][j], mat[i][j+1]), max(mat[i][j], mat[i][j+1]));
-	      if(foundEdges.find(p) == foundEdges.end())
-		{
-		  foundEdges[p] = instanceEdges.size();
-		  instanceEdges.push_back(p);
-		  edgeFeatures.push_back(val);
-		  bT.push_back(1);
-		}
-	      else
-		{
-		  edgeFeatures[foundEdges[p]] += val;
-		  bT[foundEdges[p]]++;
-		}
-	    }
+	   	 pair<int, int> p(min(mat[i][j], mat[i][j+1]), max(mat[i][j], mat[i][j+1]));
+	   	 if(foundEdges.find(p) == foundEdges.end())
+	  	 {	
+	  	  	 foundEdges[p] = instanceEdges.size();
+	  	  	 instanceEdges.push_back(p);
+	  	  	 edgeFeatures.push_back(val);
+	  	  	 bT.push_back(1);
+	  	 }	
+	   	 else
+	     {	
+	      	 edgeFeatures[foundEdges[p]] += val;
+	      	 bT[foundEdges[p]]++;
+	     }	
+	  }	
 	}
-    }
+  }
 
   (*outfile) << instanceEdges.size() << '\t' << numFeatures+1 << endl; // constant feature
+  //cout << instanceEdges.size() << '\t' << numFeatures+1 << endl; // constant feature
 
   for(int i=0; i<instanceEdges.size(); i++)
     {
@@ -668,15 +676,17 @@ void computeEdgeFeatures(string s, int n, int **mat, int numSP,
       int node2 = instanceEdges[i].second;
 
       (*outfile) << node1 << '\t' << node2 << '\t';
-      
+        
       (*outfile) << 1 << '\t' << edgeFeatures[i] << '\t' 
-		 << dist(meanLab[node1],meanLab[node2]) <<  '\t' 
-		 << chisquared(texthists[node1], texthists[node2]) << endl; // include constant feature 
+	  	 << dist(meanLab[node1],meanLab[node2]) <<  '\t' 
+	  	 << chisquared(texthists[node1], texthists[node2]) << endl; // include constant feature 
     }
 
-  for(int i=0; i<iheight; i++)
+  for(int i=0; i<hh; i++)
     delete[] vals[i];
   delete[] vals;
+
+  printf("End computeEdgeFeatures!\n");
 }
 
 /*
@@ -792,7 +802,7 @@ void writeSuperpixel(char *fn, int **mat, int hh, int ww, int numSP)
 */
 
 
-void readpb(char *fn, float **&vals)
+void readpb(char *fn, float **&vals, int hh, int ww)
 {
   ifstream infile(fn);
   if(!infile.is_open())
@@ -801,9 +811,9 @@ void readpb(char *fn, float **&vals)
       exit(-1);
     }
 
-  for(int i=0; i<iheight; i++)
+  for(int i=0; i<hh; i++)
     {
-      for(int j=0; j<iwidth; j++)
+      for(int j=0; j<ww; j++)
 	infile >> vals[i][j];
     }
 }
