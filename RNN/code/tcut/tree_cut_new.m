@@ -57,7 +57,7 @@ for n = numLeafNodes+1:numTotalNodes
 end
 
 %% counts of pixel for each subtree
-lik_type = 1; % 1:GT counts 2:posterior counts 3:posterior 4:scaled lik
+lik_type = 2; % 1:GT counts 2:posterior counts 3:posterior 4:scaled lik
 if lik_type == 1 || lik_type == 2 
   if lik_type == 1 % USE counts (GT)
     csp = imgData.labelCountsPerSP; 
@@ -77,6 +77,7 @@ if lik_type == 1 || lik_type == 2
   lik = csp .* repmat(l_theta_diff, numLeafNodes, 1) ... % Y_jz log(theta_plus / theta_minus
       + repmat(count_csp,1,n_labs) .* repmat(l_theta_minus, numLeafNodes, 1) ... % \sum_{k} Y_jk log(theta_minus)
       + repmat(nml,1,n_labs); % log(nml)
+  %lik = lik .* 0.6;
 elseif lik_type == 3
   lik = imgTreeTop.catOut(:,1:numLeafNodes)';
 elseif lik_type == 4

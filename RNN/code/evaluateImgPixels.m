@@ -111,7 +111,26 @@ elseif clsf == -1 % tcut
   for i = 1:length(allData)
     [~,~,Z{i},~] = tree_cut_new(allData{i}, allTrees{i}, theta_plus, 8, p_connect_star(i));
   end
-end
+elseif clsf == -2 % tcut for BSR tree
+  tree_file = '../../output/iccv09-allTrees-eval-140.mat';
+  load(tree_file);
+  % to get p_connect_star
+  if ~exist('p_connect_star', 'var')
+    if exist('p_connect_star_140.mat', 'file')
+      load p_connect_star_140.mat
+    else
+      test_PR_new_iccv09;
+    end
+  end
+
+  theta_plus = MLE_theta(allData,8);
+  
+  % make sure allData and allTrees are for BSR trees
+  for i = 1:length(allData)
+    [~,~,Z{i},~] = tree_cut_new(allData{i}, allTrees{i}, theta_plus, 8, p_connect_star(i));
+  end
+  
+end % end if clsf
 
 allPR = zeros(1,length(allData));
 allCorrectPixels = 0;

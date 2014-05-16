@@ -1,9 +1,7 @@
 function [thisTree,thres_arr] = buildBSRTree2(ucm2,k0)
 %load data/101087_ucm2.mat % ucm2
 %load data/101087_gt.mat % groundTruth
-if nargin < 2
-  k0 = 0.4; % initial threshold
-end
+vis = 0;
 
 ucm = ucm2(3:2:end, 3:2:end);
 thres_all = sort(unique(ucm(:)))';
@@ -12,9 +10,12 @@ len = numel(thres_all);
 %run('~/working/deep/vlfeat-0.9.16/toolbox/vl_setup.m')
 
 thres_arr = thres_all;
+if nargin < 2
+  k0 = thres_arr(1); % initial threshold
+end
 
 % construct tree
-init_map = bwlabel(ucm <= k0);
+init_map = bwlabel(ucm <= k0, 4);
 sp_id = unique(init_map);
 sp_id = sp_id(sp_id > 0); % 0 is boundary
 numTotalSegs = length(sp_id);
@@ -31,13 +32,10 @@ thisTree.kids = zeros(numTotalSuperSegs,2);
 % VI = zeros(size(thres_arr));
 % GCE = zeros(size(thres_arr));
 
-for i = 1:length(thres_arr)
+for i = 2:length(thres_arr)
     %fprintf('threshold: %d:%f\n', i, thres_arr(i));
     k = thres_arr(i);
-    if k == k0
-      continue
-    end
-    lab_map = bwlabel(ucm <= k);
+    lab_map = bwlabel(ucm <= k, 4);
     
     n_r = numel(unique(lab_map));
     %fprintf('# of labels = %d\n', n_r-1);
@@ -63,6 +61,12 @@ for i = 1:length(thres_arr)
             involve_nods = [sup_nod_id; involve_nods(3:end)];
             sup_nod_id = sup_nod_id + 1;
             %merge_flag = true;
+            
+            if vis
+              %imagesc(init_map == sup_nod_id - 1);
+              imagesc(init_map > numTotalSegs);
+              pause
+            end
         end
     end
     %assert(merge_flag == true);

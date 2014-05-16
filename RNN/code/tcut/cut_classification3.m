@@ -1,3 +1,4 @@
+% tree_cut sampling
 % needs to run cut_classification2 first
 vis = 1;
 stree = 1;
