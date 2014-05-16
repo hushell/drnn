@@ -24,9 +24,10 @@
 
 %%
 
-startup_directory;
+startup_iccv09;
 
 addpath(genpath(sp_dir));
+addpath(genpath(segbench_dir));
 
 %% Read in the filenames and ids
 
@@ -35,18 +36,18 @@ nums = [];
 
 nsp = 100; nsp2 = 200; nev = 40;
 
-fid = fopen(all_list);
-
-while(true)
-    s = fscanf(fid, '%s', 1);
-    if(isempty(s))
-        break
-    end
-    n = fscanf(fid, '%d', 1);
-    names{end+1} = s;
-    nums(end+1) = n;
-end
-fclose(fid);
+%fid = fopen(all_list);
+%
+%while(true)
+%    s = fscanf(fid, '%s', 1);
+%    if(isempty(s))
+%        break
+%    end
+%    n = fscanf(fid, '%d', 1);
+%    names{end+1} = s;
+%    nums(end+1) = n;
+%end
+%fclose(fid);
 
 %% Generate Pb features
 
@@ -57,12 +58,13 @@ if (~exist(pb_dir, 'dir'))
     mkdir(pb_dir);
 end
 
-for i=1:numel(nums)
+for i=1:length(allData)
     fprintf('%d\n', i);
     
-    im_file = sprintf('%s/%s/%s_%04d.jpg', lfw_dir, names{i}, names{i}, nums(i));
+    %im_file = sprintf('%s/%s/%s_%04d.jpg', lfw_dir, names{i}, names{i}, nums(i));
     
-    I = im2double(imread(im_file));
+    %I = im2double(imread(im_file));
+    I = im2double(allData{i}.img);
     
     [N,M,tmp] = size(I);
     
@@ -85,14 +87,15 @@ for i=1:numel(nums)
     emag_thick = pbThicken(emag);
     
     %create directories if necessary
-    imdir = sprintf('%s/%s/', pb_dir, names{i});
+    %imdir = sprintf('%s/%s/', pb_dir, names{i});
+    %
+    %%   if (~exist(imdir, 'dir'))
+    %if (~exist(imdir))
+    %    mkdir(imdir);
+    %end
     
-    %   if (~exist(imdir, 'dir'))
-    if (~exist(imdir))
-        mkdir(imdir);
-    end
-    
-    pb_file = sprintf('%s/%s/%s_%04d.emag_thick.txt', pb_dir, names{i}, names{i}, nums(i));
+    %pb_file = sprintf('%s/%s/%s_%04d.emag_thick.txt', pb_dir, names{i}, names{i}, nums(i));
+    pb_file = sprintf('%s/%s_pb.txt', pb_dir, ['iccv09_' num2str(i)]);
     
     %save emag
     %save(pb_file, 'emag_thick', '-ascii');

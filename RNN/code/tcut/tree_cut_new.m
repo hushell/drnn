@@ -57,25 +57,79 @@ for n = numLeafNodes+1:numTotalNodes
 end
 
 %% counts of pixel for each subtree
-% USE counts (GT)
-csp = imgData.labelCountsPerSP; 
-% USE conditional likelihood
-%csp = imgTreeTop.catOut(:,1:numLeafNodes)' .* repmat(imgData.numPixelInSP, 1, n_labs);
-%csp = imgTreeTop.catOut(:,1:numLeafNodes)';
-count_csp = sum(csp,2);
+lik_type = 2; % 1:GT counts 2:posterior counts 3:posterior 4:scaled lik
+if lik_type == 1 || lik_type == 2 
+  if lik_type == 1 % USE counts (GT)
+    csp = imgData.labelCountsPerSP; 
+  else % USE conditional likelihood
+    csp = imgTreeTop.catOut(:,1:numLeafNodes)' .* repmat(imgData.numPixelInSP, 1, n_labs);
+  end
+  count_csp = sum(csp,2);
+  % compute likelihood for each superpixel
+  % USE P(Y_j | z_j) = nml * Y_jz log(theta_plus / theta_minus) + \sum_{k} Y_jk log(theta_minus)
+  theta_minus = (1 - theta_plus) ./ (n_labs - 1);
+  l_theta_plus = log(theta_plus);
+  l_theta_minus = log(theta_minus);
+  l_theta_diff = l_theta_plus - l_theta_minus;
 
-% compute likelihood for each superpixel
-% USE P(Y_j | z_j) = nml * Y_jz log(theta_plus / theta_minus) + \sum_{k} Y_jk log(theta_minus)
-theta_minus = (1 - theta_plus) ./ (n_labs - 1);
-l_theta_plus = log(theta_plus);
-l_theta_minus = log(theta_minus);
-l_theta_diff = l_theta_plus - l_theta_minus;
+  % factorial(n) = gamma(n+1), nml = n!/(x_1!...x_n!)
+  nml = gammaln(sum(csp,2)+1)-sum(gammaln(csp+1),2);
+  lik = csp .* repmat(l_theta_diff, numLeafNodes, 1) ... % Y_jz log(theta_plus / theta_minus
+      + repmat(count_csp,1,n_labs) .* repmat(l_theta_minus, numLeafNodes, 1) ... % \sum_{k} Y_jk log(theta_minus)
+      + repmat(nml,1,n_labs); % log(nml)
+  %lik = lik .* 0.6;
+elseif lik_type == 3
+  lik = imgTreeTop.catOut(:,1:numLeafNodes)';
+elseif lik_type == 4
+  load prior_with_position.mat % px
+  %px = [0.1499 0.1398 0.2055 0.0927 0.0415 0.2420 0.0050 0.1237];
+  nregions = size(px,1);
+  til = nregions^(1/2);
+  % mask
+  [iy,ix] = size(imgData.segs2);
+  mask = zeros(iy,ix);
+  for c = 1:til
+    for b = 1:til
+      if b ~= til
+        mask((b-1)*ceil(iy/til)+1:b*ceil(iy/til), (c-1)*ceil(ix/til)+1:c*ceil(ix/til)) = b+(c-1)*til;
+      else
+        mask((b-1)*ceil(iy/til)+1:end, (c-1)*ceil(ix/til)+1:c*ceil(ix/til)) = b+(c-1)*til;
+      end
+    end
+  end
+  mask = mask(1:iy,1:ix);
+  
+  overlap = zeros(length(imgData.segLabels),nregions);
+  for si = 1:length(imgData.segLabels)
+    for oi = 1:nregions
+      simg = imgData.segs2 == si;
+      bimg = mask == oi;
+      intimg = simg & bimg;
+      overlap(si,oi) = sum(intimg(:)) / sum(bimg(:));
+    end
+  end
+  px_sp = overlap*px;
+  px_sp = bsxfun(@rdivide,px_sp,sum(px_sp,2));
+  
+  lik = imgTreeTop.catOut(:,1:numLeafNodes)';
+  %lik = lik - log(px_sp);
+  lik = lik ./ px_sp; % P(z|y) / p(z)
+  %lik = bsxfun(@rdivide,lik,sum(lik,2));
+  
+%   csp = lik .* repmat(imgData.numPixelInSP, 1, n_labs);
+%   count_csp = sum(csp,2);
+%   theta_minus = (1 - theta_plus) ./ (n_labs - 1);
+%   l_theta_plus = log(theta_plus);
+%   l_theta_minus = log(theta_minus);
+%   l_theta_diff = l_theta_plus - l_theta_minus;
+% 
+%   % factorial(n) = gamma(n+1), nml = n!/(x_1!...x_n!)
+%   nml = gammaln(sum(csp,2)+1)-sum(gammaln(csp+1),2);
+%   lik = csp .* repmat(l_theta_diff, numLeafNodes, 1) ... % Y_jz log(theta_plus / theta_minus
+%       + repmat(count_csp,1,n_labs) .* repmat(l_theta_minus, numLeafNodes, 1) ... % \sum_{k} Y_jk log(theta_minus)
+%       + repmat(nml,1,n_labs); % log(nml)
+end
 
-% factorial(n) = gamma(n+1), nml = n!/(x_1!...x_n!)
-nml = gammaln(sum(csp,2)+1)-sum(gammaln(csp+1),2);
-lik = csp .* repmat(l_theta_diff, numLeafNodes, 1) ... % Y_jz log(theta_plus / theta_minus
-    + repmat(count_csp,1,n_labs) .* repmat(l_theta_minus, numLeafNodes, 1) ... % \sum_{k} Y_jk log(theta_minus)
-    + repmat(nml,1,n_labs); % log(nml)
 
 %% bottom-up phase: Q(t) 
 q = zeros(numTotalNodes, n_labs); % max likelihood
@@ -207,7 +261,7 @@ end
 labs = pred_labs;
 cuts = cut_if;
 %Q = max(q,[],2);
-qind = sub2ind(size(q),1:numel(pred_labs),pred_labs');
+%qind = sub2ind(size(q),1:numel(pred_labs),pred_labs');
 %Q = q(qind);
 Q = q;
 
