@@ -1,6 +1,8 @@
 function [accs mprs] = test_LR_xvalid()
 % logistic regression with 5-fold cross validation
-addpath ~/working/deep/netlab3_3/
+%addpath ~/working/deep/netlab3_3/
+addpath /scratch/working/deep/netlab3_3/
+addpath ../
 
 accs = zeros(1,5);
 mprs = zeros(1,5);
@@ -10,6 +12,41 @@ load ../../data/iccv09-allData-train.mat
 [nr, nim] = size(allData);  % nr is 1, nim is the number of images
 D = size(allData{1}.feat2,2); % number of features
 nclass = 8;
+
+if ~isfield(allData{1}, 'labelCountsPerSP')
+    % numLabelsPerSP
+    for i = 1:length(allData)
+        labelRegs = allData{i}.labels;
+        segs = allData{i}.segs2;
+        numSegs = max(segs(:));
+        labelCountsPerSP = zeros(numSegs, nclass);
+        numPixelInSP = zeros(numSegs, 1);
+        for r = 1:numSegs
+            numPixelInSP(r) = numel(labelRegs(segs == r));
+            for ci = 1:nclass
+                labelCountsPerSP(r,ci) = sum(labelRegs(segs==r) == ci);
+            end
+        end
+        allData{i}.labelCountsPerSP = labelCountsPerSP;
+        allData{i}.numPixelInSP = numPixelInSP;
+    end
+    
+    % expectation observation
+    for i = 1:length(allData)
+        labelRegs = allData{i}.labels;
+        segs = allData{i}.segs2;
+        numSegs = max(segs(:));
+        expectSegLabels = zeros(numSegs, nclass);
+        for r = 1:numSegs
+            numPixelInSeg = numel(labelRegs(segs == r));
+            for ci = 1:nclass
+                expectSegLabels(r,ci) = sum(labelRegs(segs==r) == ci) / numPixelInSeg;
+            end
+        end
+        allData{i}.expectSegLabels = expectSegLabels;
+    end
+    save ../../data/iccv09-allData-train.mat allData
+end
 
 allDataFold = cell(1,5);
 for xv = 1:4
@@ -43,18 +80,24 @@ clear allData
 %% training & testing
 nets = cell(1,5);
 for xv = 1:5
-	fprintf('training in fold %d...\n', xv);
+  fprintf('training in fold %d...\n', xv);
 	%[Xe te] = form_data(allDataFold{xv}, nsp_fold{xv}, D);
   allData = [allDataFold{setdiff(1:5,xv)}];
-	[Xr tr] = form_data(allData, sum(nsp_fold)-nsp_fold(xv), D, nclass);
+  [Xr tr yr] = form_data(allData, sum(nsp_fold)-nsp_fold(xv), D, nclass);
   clear allData
 
+  net_file = ['LR_iccv09_fold_' num2str(xv) '.mat'];
+  if exist(net_file, 'file')
+      load(net_file)
+  else
 	net = glm(D, nclass, 'softmax');
 	options = foptions;
 	options(1) = 1; % set to 1 to display error values during training
 	options(14) = 10; %  maximum number of iterations 
-	nets{xv} = glmtrain(net, options, Xr, tr);
-	save(['LR_iccv09_fold_' num2str(xv) '.mat'],'net');
+	net = glmtrain(net, options, Xr, tr);
+    nets{xv} = net;
+	save(net_file,'net');
+  end
 
 	fprintf('testing in fold %d...\n', xv);
 	Z = cell(1,143);
@@ -65,6 +108,7 @@ for xv = 1:5
       end
 		
     	Z{i} = glmfwd(net, allDataFold{xv}{i}.feat2);
+        Z{i} = Z{i}';
 	end
 
 	[accs(xv) mprs(xv)] = evaluateImgPixels2(allDataFold{xv}, Z);
@@ -89,7 +133,7 @@ end
 assert(max(y) == nclass);
 
 % remove y = 0
-indx = y > 0;
+indx = y ~= 0;
 y = y(indx);
 X = X(indx,:);
 
