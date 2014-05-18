@@ -119,7 +119,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         gamma = mymax(gamma,absolute(A[i+n*i]));
         for (j = 0;j < n; j++)
         {
-            //printf("A(%d,%d) = %f, %f\n",i,j,A[i+n*j],absolute(A[i+n*j]));
+            /*printf("A(%d,%d) = %f, %f\n",i,j,A[i+n*j],absolute(A[i+n*j]));*/
             if (i != j)
                 xi = mymax(xi,absolute(A[i+n*j]));
         }

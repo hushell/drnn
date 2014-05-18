@@ -1,6 +1,6 @@
 function [accs mprs] = test_RNN_xvalid()
 % logistic regression with 5-fold cross validation
-addpath ~/working/deep/netlab3_3/
+%addpath ~/working/deep/netlab3_3/
 addpath ../
 addpath(genpath('../tools/'));
 
@@ -15,8 +15,8 @@ options.TolX = 1e-4;
 %%%%%%%%%%%%%%%%%%%%%%%
 %iccv09: 0 void   1,1 sky  0,2 tree   2,3 road  1,4 grass  1,5 water  1,6 building  2,7 mountain 2,8 foreground
 set(0,'RecursionLimit',1000);
-params.numLabels = 7; % we never predict 0 (void)
-params.numFeat = 268;
+params.numLabels = 8; % we never predict 0 (void)
+params.numFeat = 119;
 
 
 %%%%%%%%%%%%%%%%%%%%%%
@@ -114,6 +114,16 @@ nsp_fold(end+1) = nsp;
 clear allData 
 
 %% training & testing
+
+% start a matlab pool to use all CPU cores for full tree training
+%if isunix && matlabpool('size') == 0
+%    numCores = feature('numCores')
+%    if numCores >= 8
+%        numCores=4
+%    end
+%    matlabpool('open',numCores);
+%end
+
 %load ../../output/iccv09-1_fullParams_hid50_PTC0.0001_fullC0.0001_L0.05_good.mat
 %nets = cell(1,5);
 for xv = 1:5
@@ -125,32 +135,36 @@ for xv = 1:5
   neighName = [neighNameStem '_' dataSet 'fold' num2str(xv) '.mat'];
   if ~exist(neighName, 'file')
     preProSegFeatsAndSave2(allData, neighName, params);
-  else
-    load(neighName,'goodPairsL','goodPairsR','badPairsL','badPairsR','onlyGoodL','onlyGoodR','onlyGoodLabels','allSegs','allSegLabels');
   end
+  load(neighName,'goodPairsL','goodPairsR','badPairsL','badPairsR','onlyGoodL','onlyGoodR','onlyGoodLabels','allSegs','allSegLabels');
   
   paramString = ['_hid' num2str(params.numHid ) '_PTC' num2str(params.regPTC)];
   fullParamNameBegin = ['../../output/' mainDataSet '_fullParams'];
   paramString = [paramString '_fullC' num2str(params.regC) '_L' num2str(params.LossPerError)];
   fullTrainParamName = [fullParamNameBegin paramString '_fold' num2str(xv) '.mat'];
   disp(['fullTrainParamName=' fullTrainParamName ])
+
+  if exist(fullTrainParamName, 'file')
+      load(fullTrainParamName );
+  else
   
-  %%%%%%%%%%%%%%%%%%%%%%
-  % initialize parameters
-  initParams
+    %%%%%%%%%%%%%%%%%%%%%%
+    % initialize parameters
+    initParams
 
-  %%%%%%%%%%%%%%%%%%%%%%
-  % TRAINING
+    %%%%%%%%%%%%%%%%%%%%%%
+    % TRAINING
 
-  % train Wbot layer and first RNN collapsing decisions with all possible correct and incorrect segment pairs
-  % this uses the training data more efficiently than the purely greedy full parser training that only looks at some pairs
-  % both could have been combined into one training as well.
-  [X decodeInfo] = param2stack(Wbot,W,Wout,Wcat);
-  X = minFunc(@costFctInitWithCat,X,optionsPT,decodeInfo,goodPairsL,goodPairsR,badPairsL,badPairsR,onlyGoodL,onlyGoodR,onlyGoodLabels,allSegs,allSegLabels,params);
+    % train Wbot layer and first RNN collapsing decisions with all possible correct and incorrect segment pairs
+    % this uses the training data more efficiently than the purely greedy full parser training that only looks at some pairs
+    % both could have been combined into one training as well.
+    [X decodeInfo] = param2stack(Wbot,W,Wout,Wcat);
+    X = minFunc(@costFctInitWithCat,X,optionsPT,decodeInfo,goodPairsL,goodPairsR,badPairsL,badPairsR,onlyGoodL,onlyGoodR,onlyGoodLabels,allSegs,allSegLabels,params);
 
-  X = minFunc(@costFctFull,X,options,decodeInfo,allData,params);
-  [Wbot,W,Wout,Wcat] = stack2param(X, decodeInfo);
-  save(fullTrainParamName,'Wbot','W','Wout','Wcat','params','options');
+    X = minFunc(@costFctFull,X,options,decodeInfo,allData,params);
+    [Wbot,W,Wout,Wcat] = stack2param(X, decodeInfo);
+    save(fullTrainParamName,'Wbot','W','Wout','Wcat','params','options','-v7.3');
+  end
 
 	% compute all parse trees
   clear allData
@@ -334,4 +348,4 @@ goodPairsR = goodPairsR(:,1:numGBPairsAll);
 badPairsL = badPairsL(:,1:numGBPairsAll);
 badPairsR = badPairsR(:,1:numGBPairsAll);
 
-save(neighName,'goodPairsL','goodPairsR','badPairsL','badPairsR','meanAll','stdAll','onlyGoodL','onlyGoodR','onlyGoodLabels','allSegs','allSegLabels');
+save(neighName,'goodPairsL','goodPairsR','badPairsL','badPairsR','onlyGoodL','onlyGoodR','onlyGoodLabels','allSegs','allSegLabels');
