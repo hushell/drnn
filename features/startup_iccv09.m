@@ -34,8 +34,9 @@ sp_dir = './superpixels64/';
 spfeat_dir = [data_dir '/parts_spseg_features/'];
 
 %% save images and GTs
-load ../RNN/data/iccv09-allData-eval.mat
+load ../RNN/data/iccv09-allData-train.mat
 
+%% NOTE: run the following separately if you don't want to generate these everytime calling this script
 % for i = 1:length(allData)
 %   im = allData{i}.img;
 % %   gt = allData{i}.labels;

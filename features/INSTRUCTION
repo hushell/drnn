@@ -4,7 +4,9 @@ Create a folder e.g., data_penn_fudan with Color, GroundTruth and feat_superpixe
 
 a. Prepare dataset and 3rd party softwares (OpenCV and VLFeat)
 
-b. run startup_penn_fudan.m  
+b. run startup_penn_fudan.m 
+
+	- generate data_dir/list.txt which contains in each line: image_name size(im,1) size(im,2)
 	
 c. generate texture features (64 texton features for node, + 64 LAB color features = 128 dim features)
 

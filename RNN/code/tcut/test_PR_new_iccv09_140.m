@@ -9,21 +9,22 @@ load ../../data/iccv09-allData-eval-140.mat
 run('~/working/deep/vlfeat-0.9.16/toolbox/vl_setup.m');
 
 % compute all parse trees
-tree_file = '../../output/iccv09-allTrees-eval-140.mat';
+tree_file = '../../output/iccv09-allTrees-train-140.mat';
 if ~exist('allTrees','var')
     if exist(tree_file,'file')
         load(tree_file); 
     else
-        allTrees = cell(1,length(allData));
+        %allTrees = cell(1,length(allData));
+        allTrees = cell(1,572);
         %allThres = cell(1,length(allData));
-        for i = 1:length(allData)
+        for i = 1:572
             fprintf('computing %d...\n', i);
-            load(['../../../BSR/iccv09data/ucm2/iccv09_' num2str(i) '.mat']);
+            load(['../../../BSR/iccv09data_train/ucm2/iccv09_train_' num2str(i) '.mat']);
             [thisTree,thres_arr] = buildBSRTree2(ucm2,0);
             allTrees{i} = thisTree;
             %allThres{i} = thres_arr;
         end
-        save('../../output/iccv09-allTrees-eval-140.mat', 'allTrees');
+        save('../../output/iccv09-allTrees-train-140.mat', 'allTrees');
     end
 end
 

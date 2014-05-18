@@ -4,7 +4,7 @@ clear
 close all
 run('/home/hushell/working/deep/vlfeat-0.9.16/toolbox/vl_setup');
 
-load ../RNN/data/iccv09-allData-eval.mat
+load ../RNN/data/iccv09-allData-train.mat
 
 save_path = 'data_iccv09/feat_superpixels/';
 
@@ -12,7 +12,7 @@ for id = 1:length(allData)
     
     %segments = vl_slic(im, regionSize, regularizer) ;
     %segments = allData{id}.segs2;
-    file = ['../BSR/iccv09data/ucm2/iccv09_' num2str(id) '.mat'];
+    file = ['../BSR/iccv09data_train/ucm2/iccv09_train_' num2str(id) '.mat'];
     load(file);
     ucm = ucm2(3:2:end, 3:2:end);
     regions = bwlabel(ucm == 0,4);

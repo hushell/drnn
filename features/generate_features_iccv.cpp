@@ -372,9 +372,9 @@ void computeNodeFeatures(string s, int hh, int ww,
   //int posFOffset = numClusters;
   //int numGridFeatures = 64;
   int texFOffset = numClusters; // [64,127]
-  int numPosF = 12; // 4x3 grid
-  int posFOffset = texFOffset + numTextClusters; // [128, 139]
-  double uw = (int)(ww) / 3.0;
+  int numPosF = 16; // 4x3 grid
+  int posFOffset = texFOffset + numTextClusters; // [128, 144]
+  double uw = (int)(ww) / 4.0;
   double uh = (int)(hh) / 4.0;
   
   //int numFeatures = numClusters + numGridFeatures;
@@ -451,9 +451,10 @@ void computeNodeFeatures(string s, int hh, int ww,
   	}
   }
   
-  for(int i=0; i<hh; i++)
+    // NOTE: dense sift by vl_phow or vl_dsift is column-wise
+	for(int j=0; j<ww; j++)
     {
-      for(int j=0; j<ww; j++)
+	  for(int i=0; i<hh; i++)
 	{
 	  int sp = mat[i][j];
 	  ++numInSP[sp];

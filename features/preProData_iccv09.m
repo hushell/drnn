@@ -38,7 +38,8 @@ for asd=1:1
         assert(all(size(segs2)==size(labels)))
         
         %feat2= dlmread([dataFolder 'newFeatures/' fileList{i} '.0.txt']);
-        load([save_path, ['iccv09_' num2str(i)], '_node_context.mat'], 'H');
+        %load([save_path, ['iccv09_' num2str(i)], '_node_context.mat'], 'H');
+        load([save_path, ['iccv09_' num2str(i)], '_node.mat'], 'H');
         feat2 = H(:,2:end);
         
         assert(size(feat2,1)==max(segs2(:)));

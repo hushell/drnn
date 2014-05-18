@@ -31,7 +31,7 @@ else
     
     step = 100;
     maxsample = 200*200;
-    for i=1:2:length(allData)
+    for i=1:5:length(allData)
       fprintf('%d\n', i);
         imfn = rgb2gray(double(allData{i}.img) / 255);
         fimfn = fbRun(fb, imfn);
