@@ -1,14 +1,21 @@
-function [accs mprs] = test_CG_xvalid()
+function [accs mprs] = test_LR_xvalid(data_train, data_eval, save_dir)
 % logistic regression with 5-fold cross validation
+
+if nargin < 1
+    data_train = '../../data/iccv09-allData-train-140.mat';
+    data_eval = '../../data/iccv09-allData-eval-140.mat';
+    save_dir = './LR_iccv09-140';
+end
+
 %addpath ~/working/deep/netlab3_3/
-%addpath /scratch/working/deep/netlab3_3/
+addpath /scratch/eecs-share/huxu/deep/netlab3_3/
 addpath ../
 
 accs = zeros(1,5);
 mprs = zeros(1,5);
 
 %% prepare data
-load ../../data/iccv09-allData-train-140.mat
+load(data_train); 
 [nr, nim] = size(allData);  % nr is 1, nim is the number of images
 D = size(allData{1}.feat2,2); % number of features
 nclass = 8;
@@ -67,7 +74,7 @@ for i = 1:nim
 end
 clear allData 
 
-load ../../data/iccv09-allData-eval-140.mat
+load(data_eval); 
 allDataFold{5} = allData;
 
 nsp = 0;
@@ -86,29 +93,20 @@ for xv = 1:5
   [Xr tr yr] = form_data(allData, sum(nsp_fold)-nsp_fold(xv), D, nclass);
   clear allData
 
-  net_file = ['./CG_iccv09_fold_' num2str(xv) '.mat'];
+  net_file = [save_dir '_fold_' num2str(xv) '.mat'];
   if exist(net_file, 'file')
       load(net_file)
   else
-	% counting grid model for each class
-	cgm = cell(1,nclass);
-	E = [30 30];
-	W = [4 4];
-	
-	for k = 1:nclass
-	  counts = Xr(yr == k, :)';
-	  [pi,pl,Lq,loglikelihood_samples] = cg( counts, E, W);
-	  cgm{k}.pi = pi;
-	  cgm{k}.pl = pl;
-	  cgm{k}.Lq = Lq;
-	  cgm{k}.loglikelihood_samples = loglikelihood_samples;
-	end
-	save(net_file,'cgm');
+	net = glm(D, nclass, 'softmax');
+	options = foptions;
+	options(1) = 1; % set to 1 to display error values during training
+	options(14) = 10; %  maximum number of iterations 
+	net = glmtrain(net, options, Xr, tr);
+    nets{xv} = net;
+	save(net_file,'net');
   end
 
 	fprintf('testing in fold %d...\n', xv);
-	options.learn_pi = 0;
-	options.learn_pl = 0;
 	Z = cell(1,143);
 	for i = 1:143
       if length(allDataFold{xv}{i}.segLabels)~=size(allDataFold{xv}{i}.feat2,1)
@@ -116,15 +114,8 @@ for xv = 1:5
 	    	continue
       end
 		
-  		Xi = allDataFold{xv}{i}.feat2;
-  		Zk = zeros(nclass,size(Xi,1));
-  		for k = 1:nclass
-  		  options.pi = cgm{k}.pi;
-  		  options.pl = cgm{k}.pl;
-  		  [~,~,~,loglik] = cg(Xi', E, W, options);
-  		  Zk(k,:) = loglik;
-  		end
-        Z{i} = Zk;
+    	Z{i} = glmfwd(net, allDataFold{xv}{i}.feat2);
+        Z{i} = Z{i}';
 	end
 
 	[accs(xv) mprs(xv)] = evaluateImgPixels2(allDataFold{xv}, Z);

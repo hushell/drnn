@@ -99,21 +99,21 @@ if strcmp(mainDataSet,'msrc')
 else
     upperBoundSegPairsNum = length(allData) * 150*5;
 end
-goodPairsL = zeros(params.numFeat+1,upperBoundSegPairsNum);
-goodPairsR = zeros(params.numFeat+1,upperBoundSegPairsNum);
-badPairsL = zeros(params.numFeat+1,upperBoundSegPairsNum);
-badPairsR = zeros(params.numFeat+1,upperBoundSegPairsNum);
-startBoth = 1;
-startBad = 1;
-
-onlyGoodL = zeros(params.numFeat+1,upperBoundSegPairsNum);
-onlyGoodR = zeros(params.numFeat+1,upperBoundSegPairsNum);
-onlyGoodLabels = zeros(1,upperBoundSegPairsNum);
-startOnlyGood = 1;
-
-allSegs = zeros(params.numFeat+1,upperBoundSegPairsNum);
-allSegLabels =  zeros(1,upperBoundSegPairsNum);
-startAllSegs = 1;
+%goodPairsL = zeros(params.numFeat+1,upperBoundSegPairsNum);
+%goodPairsR = zeros(params.numFeat+1,upperBoundSegPairsNum);
+%badPairsL = zeros(params.numFeat+1,upperBoundSegPairsNum);
+%badPairsR = zeros(params.numFeat+1,upperBoundSegPairsNum);
+%startBoth = 1;
+%startBad = 1;
+%
+%onlyGoodL = zeros(params.numFeat+1,upperBoundSegPairsNum);
+%onlyGoodR = zeros(params.numFeat+1,upperBoundSegPairsNum);
+%onlyGoodLabels = zeros(1,upperBoundSegPairsNum);
+%startOnlyGood = 1;
+%
+%allSegs = zeros(params.numFeat+1,upperBoundSegPairsNum);
+%allSegLabels =  zeros(1,upperBoundSegPairsNum);
+%startAllSegs = 1;
 
 for i = 1:length(allData)
     segs = allData{i}.segs2;
@@ -167,22 +167,23 @@ for i = 1:length(allData)
     if mod(i,20)==0, disp([num2str(i) '/' num2str(length(allData))]);end
 end
 
-numAllSegs = startAllSegs-1;
-allSegs= allSegs(:,1:numAllSegs);
-allSegLabels= allSegLabels(1:numAllSegs);
+%numAllSegs = startAllSegs-1;
+%allSegs= allSegs(:,1:numAllSegs);
+%allSegLabels= allSegLabels(1:numAllSegs);
+%
+%numOnlyGood = startOnlyGood-1;
+%onlyGoodL = onlyGoodL(:,1:numOnlyGood);
+%onlyGoodR = onlyGoodR(:,1:numOnlyGood);
+%onlyGoodLabels= onlyGoodLabels(1:numOnlyGood);
+%
+%numGBPairsAll = startBoth-1;
+%% delete trailing zeros in pre-allocated matrix
+%goodPairsL = goodPairsL(:,1:numGBPairsAll);
+%goodPairsR = goodPairsR(:,1:numGBPairsAll);
+%badPairsL = badPairsL(:,1:numGBPairsAll);
+%badPairsR = badPairsR(:,1:numGBPairsAll);
 
-numOnlyGood = startOnlyGood-1;
-onlyGoodL = onlyGoodL(:,1:numOnlyGood);
-onlyGoodR = onlyGoodR(:,1:numOnlyGood);
-onlyGoodLabels= onlyGoodLabels(1:numOnlyGood);
-
-numGBPairsAll = startBoth-1;
-% delete trailing zeros in pre-allocated matrix
-goodPairsL = goodPairsL(:,1:numGBPairsAll);
-goodPairsR = goodPairsR(:,1:numGBPairsAll);
-badPairsL = badPairsL(:,1:numGBPairsAll);
-badPairsR = badPairsR(:,1:numGBPairsAll);
 
 
-
-save(neighName,'allData','goodPairsL','goodPairsR','badPairsL','badPairsR','meanAll','stdAll','onlyGoodL','onlyGoodR','onlyGoodLabels','allSegs','allSegLabels','-v7.3');
+%save(neighName,'allData','goodPairsL','goodPairsR','badPairsL','badPairsR','meanAll','stdAll','onlyGoodL','onlyGoodR','onlyGoodLabels','allSegs','allSegLabels');
+save(neighName,'allData','-v7.3');
