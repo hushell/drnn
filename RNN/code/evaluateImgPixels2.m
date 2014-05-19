@@ -6,7 +6,9 @@ allPR = zeros(1,length(allData));
 allCorrectPixels = 0;
 allPixels = 0;
 for i = 1:length(allData)
-    if length(allData{i}.segLabels)~=size(allData{i}.feat2,1)
+    if length(allData{i}.segLabels)~=size(allData{i}.feat2,1) ...
+        || numel(unique(unique(allData{i}.segs2))) ~= length(allData{i}.segLabels) ...
+        || length(allData{i}.segLabels) == 1 
         disp(['Image ' num2str(i) ' has faulty data, skipping!'])
         continue
     end
