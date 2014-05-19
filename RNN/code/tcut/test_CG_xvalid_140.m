@@ -1,5 +1,12 @@
-function [accs mprs] = test_CG_xvalid()
+function [accs mprs] = test_CG_xvalid(data_train, data_eval, save_dir)
 % logistic regression with 5-fold cross validation
+
+if nargin < 1
+    data_train = '../../data/iccv09-allData-train-140.mat';
+    data_eval = '../../data/iccv09-allData-eval-140.mat';
+    save_dir = './CG_iccv09-140';
+end
+
 %addpath ~/working/deep/netlab3_3/
 %addpath /scratch/working/deep/netlab3_3/
 addpath ../
@@ -8,7 +15,7 @@ accs = zeros(1,5);
 mprs = zeros(1,5);
 
 %% prepare data
-load ../../data/iccv09-allData-train-140.mat
+load(data_train); 
 [nr, nim] = size(allData);  % nr is 1, nim is the number of images
 D = size(allData{1}.feat2,2); % number of features
 nclass = 8;
@@ -67,7 +74,7 @@ for i = 1:nim
 end
 clear allData 
 
-load ../../data/iccv09-allData-eval-140.mat
+load(data_eval); 
 allDataFold{5} = allData;
 
 nsp = 0;
@@ -86,7 +93,7 @@ for xv = 1:5
   [Xr tr yr] = form_data(allData, sum(nsp_fold)-nsp_fold(xv), D, nclass);
   clear allData
 
-  net_file = ['./CG_iccv09_fold_' num2str(xv) '.mat'];
+  net_file = [save_dir '_fold_' num2str(xv) '.mat'];
   if exist(net_file, 'file')
       load(net_file)
   else

@@ -3,6 +3,8 @@
 
 %addpath(genpath('../../toolbox/'));
 
+startup_iccv09
+
 %dataset = '../data/iccv09/'
 %dataFolder = '../data/msrc/';
 dataFolder = 'data_iccv09/';
@@ -123,5 +125,5 @@ if ~exist(neighName,'file')
     %dataSet='train';
     %preProSegFeatsAndSave(dataFolder,neighNameStem,trainList, neighName, dataSet, params,mainDataSet)
     dataSet='train';
-    preProSegFeatsAndSave(dataFolder,neighNameStem,evalList, neighNameEval, dataSet, params,mainDataSet)
+    preProSegFeatsAndSave2(dataFolder,neighNameStem,evalList, neighNameEval, dataSet, params,mainDataSet)
 end
