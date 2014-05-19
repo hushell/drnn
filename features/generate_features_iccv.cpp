@@ -31,7 +31,7 @@ int iheight = 250, iwidth = 250;
 
 // specify number of color clusters and texture clusters
 int numClusters = 64;
-int numTextClusters = 64;
+int numTextClusters = 512;
 
 // image file extension
 string ext = "jpg";
